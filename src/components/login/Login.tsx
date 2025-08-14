@@ -497,7 +497,7 @@ const Login: React.FC = () => {
 
             <div className="signup-link">
               Don't have an account?{" "}
-              <Link to="/register" className="signup-text">
+              <Link to="/ClientInterface" className="signup-text">
                 Sign up
               </Link>
             </div>
