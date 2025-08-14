@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 
 interface ValidationErrors {
   email?: string;
@@ -496,9 +497,9 @@ const Login: React.FC = () => {
 
             <div className="signup-link">
               Don't have an account?{" "}
-              <a href="#" className="signup-text">
+              <Link to="/register" className="signup-text">
                 Sign up
-              </a>
+              </Link>
             </div>
 
             <div className="user-type-selection">

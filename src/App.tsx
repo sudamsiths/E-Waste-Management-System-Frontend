@@ -1,10 +1,9 @@
-import React from 'react'
-import Login from './components/login/Login'
+import { Outlet } from 'react-router'
 
 function App() {
   return (
     <div className="App">
-      <Login/>
+      <Outlet />
     </div>
   )
 }
