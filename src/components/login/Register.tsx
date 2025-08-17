@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 interface FormData {
   fullName: string;
-  contactNumber: string;
+  contactNumber: string; // Changed back to string for input handling
   username: string;
   email: string;
   address: string;
@@ -14,7 +15,7 @@ interface FormData {
 
 interface ValidationErrors {
   fullName?: string;
-  contactNumber?: string;
+  contactNumber?: string; // Changed to string to match FormData interface
   username?: string;
   email?: string;
   address?: string;
@@ -26,10 +27,11 @@ interface ValidationErrors {
 type UserType = 'customer' | 'admin';
 
 const Register: React.FC = () => {
+  const navigate = useNavigate();
   const [userType, setUserType] = useState<UserType>('customer');
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
-    contactNumber: '',
+    contactNumber: '', // Initialize as empty string
     username: '',
     email: '',
     address: '',
@@ -41,18 +43,13 @@ const Register: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const validateForm = (): boolean => {
     const newErrors: ValidationErrors = {};
 
     if (!formData.fullName.trim()) {
       newErrors.fullName = 'Full name is required';
-    }
-
-    if (!formData.contactNumber.trim()) {
-      newErrors.contactNumber = 'Contact number is required';
-    } else if (!/^\+?[\d\s-()]+$/.test(formData.contactNumber)) {
-      newErrors.contactNumber = 'Please enter a valid contact number';
     }
 
     if (!formData.username.trim()) {
@@ -75,7 +72,7 @@ const Register: React.FC = () => {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 8) {
       newErrors.password = 'Password must be at least 8 characters';
-    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
+    } else if (!/(?=.*[a-z])/.test(formData.password)) {
       newErrors.password = 'Password must contain uppercase, lowercase, and number';
     }
 
@@ -87,6 +84,21 @@ const Register: React.FC = () => {
 
     if (!formData.agreeToTerms) {
       newErrors.agreeToTerms = 'You must agree to the Terms of Service and Privacy Policy';
+    }
+
+    // Validate contact number as a number
+    if (!formData.contactNumber.trim()) {
+      newErrors.contactNumber = 'Contact number is required';
+    } else {
+      // Remove all non-digit characters
+      const digits = formData.contactNumber.replace(/\D/g, '');
+      if (digits.length < 7) { // Minimum 7 digits for a valid phone number
+        newErrors.contactNumber = 'Please enter a valid contact number';
+      }
+      // Check if it can be parsed as a number
+      if (isNaN(Number(digits))) {
+        newErrors.contactNumber = 'Contact number must contain only digits';
+      }
     }
 
     setErrors(newErrors);
@@ -112,12 +124,57 @@ const Register: React.FC = () => {
     }
 
     setIsSubmitting(true);
+    setApiError(null);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      console.log('Registration successful:', { ...formData, userType });
+      // Extract only digits from the contact number
+      const digitsOnly = formData.contactNumber.replace(/\D/g, '');
+      const contactNumberAsInt = parseInt(digitsOnly, 10);
+      
+      // Check if we have a valid number
+      if (isNaN(contactNumberAsInt)) {
+        setApiError('Invalid contact number format');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Prepare data for API with integer contact number
+      const userData = {
+        fullName: formData.fullName,
+        contactNumber: contactNumberAsInt, // Send as integer, not string
+        username: formData.username,
+        email: formData.email,
+        address: formData.address,
+        password: formData.password,
+        role: userType.toUpperCase()
+      };
+
+      console.log('Sending registration data:', userData);
+      
+      // Send registration request
+      const response = await axios.post('http://localhost:8081/users/register', userData, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('Registration successful:', response.data);
+      
+      // Navigate to login page or show success message
+      navigate('/login', { state: { registrationSuccess: true } });
+      
     } catch (error) {
       console.error('Registration failed:', error);
+      
+      // Handle API errors
+      if (axios.isAxiosError(error) && error.response) {
+        // API returned an error response
+        const errorMessage = error.response.data?.message || 'Registration failed. Please try again.';
+        setApiError(errorMessage);
+      } else {
+        // Network error or other issues
+        setApiError('Network error. Please check your connection and try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -182,6 +239,13 @@ const Register: React.FC = () => {
               </div>
             </div>
 
+            {/* Display API error if any */}
+            {apiError && (
+              <div className="mb-4 p-3 bg-red-900/50 border border-red-700 rounded-lg">
+                <p className="text-red-400 text-sm">{apiError}</p>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
               {/* Name and Contact Row */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
@@ -211,14 +275,14 @@ const Register: React.FC = () => {
 
                 <div className="form-group">
                   <label className="block text-green-400 text-sm font-medium mb-2">
-                    Contact Number *
+                    Contact Number * 
                   </label>
                   <div className="relative">
                     <input
                       type="tel"
                       value={formData.contactNumber}
                       onChange={handleInputChange('contactNumber')}
-                      placeholder="Enter contact number"
+                      placeholder="Enter numbers only (e.g. 94721234567)"
                       className="w-full h-12 sm:h-12 text-base bg-gradient-to-b from-green-800/40 to-green-900/40 border-2 border-green-700 rounded-xl px-4 pr-12 text-yellow-200 placeholder-yellow-200/70 focus:outline-none focus:border-green-400 transition-colors"
                     />
                     <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
@@ -230,10 +294,11 @@ const Register: React.FC = () => {
                   {errors.contactNumber && (
                     <p className="text-red-400 text-xs mt-1">{errors.contactNumber}</p>
                   )}
+                  <p className="text-yellow-200/70 text-xs mt-1">Format: numbers only without spaces or symbols (e.g., 94721234567)</p>
                 </div>
               </div>
 
-              {/* Username and Email Row */}
+              {/* Username and username Row */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 <div className="form-group">
                   <label className="block text-green-400 text-sm font-medium mb-2">
@@ -427,11 +492,11 @@ const Register: React.FC = () => {
                       <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"/>
                       <path fill="currentColor" className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                     </svg>
-                    <span>Creating Account...</span>
+                    <span>Registering...</span>
                   </>
                 ) : (
                   <>
-                    <span>Create Account</span>
+                    <span>Create {userType === 'admin' ? 'Admin' : 'Customer'} Account</span>
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                       <path d="M6 12l4-4-4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
