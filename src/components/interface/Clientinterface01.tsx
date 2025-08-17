@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import Header from "../common/Header";
+import ClientInterface02 from "./ClientInterface02";
 
 function UserInterface() {
   const [currentSlide, setCurrentSlide] = useState(0);
