@@ -136,7 +136,6 @@ const Login: React.FC = () => {
 
         console.log("Token stored successfully:", token);
         console.log("Navigating to /Clientinterface");
-        
         navigate("/Navigate");
       } else {
         throw new Error("No token received from server");

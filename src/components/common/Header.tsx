@@ -5,6 +5,7 @@ const EcoTechNavbar = () => {
   const [activeItem, setActiveItem] = useState('Home');
   const [username, setUsername] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const navigate = useNavigate();
 
   // Check if user is logged in on component mount
@@ -25,6 +26,30 @@ const EcoTechNavbar = () => {
     navigate('/login');
   };
 
+  // Get user initials for avatar placeholder
+  const getUserInitials = () => {
+    if (!username) return "U";
+    return username.charAt(0).toUpperCase();
+  };
+
+  // Toggle profile dropdown
+  const toggleProfileDropdown = () => {
+    setShowProfileDropdown(!showProfileDropdown);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.profile-dropdown')) {
+        setShowProfileDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const navigationItems = [
     { name: 'Home', href: '#home' },
     { name: 'Branches', href: '#branches' },
@@ -35,36 +60,36 @@ const EcoTechNavbar = () => {
   ];
 
   return (
-    <nav className="bg-white border-b border-gray-200 px-6 py-3" style={{height: '90px'}}>
+    <nav className="bg-white border-b border-gray-200 px-3 sm:px-6 py-2 sm:py-3 fixed w-full z-50" style={{height: 'auto', minHeight: '70px', maxHeight: '90px'}}>
       <div className="max-w-full mx-auto h-full">
         <div className="flex items-center justify-between h-full">
           
-          {/* Logo Section - Far Left */}
-          <div className="flex items-center space-x-3 flex-shrink-0">
+          {/* Logo Section - Far Left (Responsive) */}
+          <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
             <div className="flex-shrink-0">
               <img
                 src="src/assets/img/E_waste_management_system_logo_2-removebg-preview.png"
                 alt="EcoTech Logo"
-                className="h-12 w-auto object-contain"
+                className="h-10 sm:h-12 w-auto object-contain"
               />
             </div>
             <button 
               style={{cursor:'pointer'}} 
               className="flex items-center focus:outline-none"
             >
-              <span className="text-2xl font-bold text-green-500">Eco</span>
-              <span className="text-2xl font-bold text-red-500">Tech</span>
+              <span className="text-xl sm:text-2xl font-bold text-green-500">Eco</span>
+              <span className="text-xl sm:text-2xl font-bold text-red-500">Tech</span>
             </button>
           </div>
 
-          {/* Navigation Menu - Center */}
-          <div className="hidden lg:flex items-center space-x-8 flex-1 justify-center">
+          {/* Navigation Menu - Center (Hidden on mobile) */}
+          <div className="hidden lg:flex items-center space-x-4 xl:space-x-8 flex-1 justify-center">
             {navigationItems.map((item) => (
               <a
                 key={item.name}
                 href={item.href}
                 onClick={() => setActiveItem(item.name)}
-                className={`relative px-4 py-2 text-base font-medium transition-colors duration-200 ${
+                className={`relative px-2 py-2 text-sm xl:text-base font-medium transition-colors duration-200 ${
                   activeItem === item.name
                     ? 'text-gray-800'
                     : 'text-gray-600 hover:text-gray-800'
@@ -79,28 +104,18 @@ const EcoTechNavbar = () => {
           </div>
 
           {/* Right Side Actions - Far Right */}
-          <div className="flex items-center space-x-4 flex-shrink-0">
+          <div className="flex items-center justify-end space-x-2 sm:space-x-4 flex-shrink-0">
             
-            {/* Search Icon */}
+            {/* Search Icon (Hidden on small screens) */}
             <button className="hidden sm:block p-2 hover:bg-gray-100 rounded-full transition-colors duration-200">
               <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </button>
 
-            {/* Shopping Cart with Badge */}
-            <button className="hidden sm:block relative p-2 hover:bg-gray-100 rounded-full transition-colors duration-200">
-              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13v6a1 1 0 001 1h8a1 1 0 001-1v-6m-9 0h10" />
-              </svg>
-              <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold">
-                1
-              </span>
-            </button>
-
-            {/* Request Pickup Button */}
-            <button className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors duration-200 text-sm font-medium">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {/* Request Pickup Button (Responsive) */}
+            <button className="bg-green-500 hover:bg-green-600 text-white px-2 sm:px-4 py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 transition-colors duration-200 text-xs sm:text-sm font-medium touch-manipulation" style={{cursor:'pointer'}}>
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
@@ -108,42 +123,69 @@ const EcoTechNavbar = () => {
               <span className="sm:hidden">Pickup</span>
             </button>
 
-            {/* User Welcome and Logout */}
+            {/* Welcome message (Hidden on smaller screens) */}
             {username && (
-              <div className="hidden md:flex items-center space-x-3">
-                <div className="text-right">
-                  <div className="text-sm text-gray-600">Welcome</div>
-                  <div className="text-sm font-semibold text-gray-800">{username}</div>
+              <div className="hidden md:block text-right mr-1 sm:mr-3">
+                <div className="text-xs sm:text-sm text-gray-600 truncate max-w-[120px] xl:max-w-none">Welcome</div>
+                <div className="text-xs sm:text-sm font-semibold text-gray-800 truncate max-w-[120px] xl:max-w-none">{username}</div>
+              </div>
+            )}
+
+            {/* Profile Icon Dropdown - Right aligned with improved mobile support */}
+            <div className="profile-dropdown relative">
+              <button 
+                className="flex items-center justify-center p-1 hover:bg-gray-100 rounded-full transition-colors duration-200 touch-manipulation min-w-[44px] min-h-[44px]"
+                onClick={toggleProfileDropdown}
+                aria-expanded={showProfileDropdown}
+                aria-label="User profile menu"
+              >
+                {/* User profile image or initials */}
+                {localStorage.getItem("userProfileImage") ? (
+                  <img 
+                    src={localStorage.getItem("userProfileImage") || ""} 
+                    alt={username || "User"}
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover border-2 border-green-500"
+                  />
+                ) : (
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-green-500 text-white flex items-center justify-center font-semibold">
+                    {getUserInitials()}
+                  </div>
+                )}
+              </button>
+              
+              {/* Profile Dropdown Menu - Mobile optimized */}
+              {showProfileDropdown && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
+                  <div className="px-4 py-2 border-b border-gray-100">
+                    <p className="text-xs text-gray-500">Signed in as</p>
+                    <p className="text-sm font-semibold text-gray-800 truncate">{username}</p>
+                  </div>
+                  <Link to="/profile" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200">
+                    Your Profile
+                  </Link>
+                  <Link to="/settings" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200">
+                    Settings
+                  </Link>
+                  <Link to="/tickets" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200">
+                    Your Tickets
+                  </Link>
+                  <hr className="my-1" />
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-gray-100 active:bg-gray-200"
+                  >
+                    Sign out
+                  </button>
                 </div>
-                <button 
-                  onClick={handleLogout}
-                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center space-x-1 text-sm font-medium transition-colors duration-200"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                  <span>Log out</span>
-                </button>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Mobile User Info */}
-            {username && (
-              <div className="md:hidden flex items-center space-x-2">
-                <span className="text-xs text-gray-600">{username}</span>
-                <button 
-                  onClick={handleLogout}
-                  className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs"
-                >
-                  Out
-                </button>
-              </div>
-            )}
-
-            {/* Mobile Menu Button */}
+            {/* Mobile Menu Button - Improved touch target */}
             <button 
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden p-2 hover:bg-gray-100 rounded-md"
+              className="lg:hidden p-2 hover:bg-gray-100 rounded-md touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+              aria-expanded={isMobileMenuOpen}
+              aria-label="Toggle menu"
             >
               <svg 
                 className={`w-6 h-6 text-gray-600 transform transition-transform duration-200 ${
@@ -164,14 +206,17 @@ const EcoTechNavbar = () => {
         </div>
       </div>
   
-      {/* Mobile Menu */}
-      <div className={`lg:hidden transition-all duration-300 ease-in-out ${
-        isMobileMenuOpen ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'
-      } overflow-hidden bg-white border-t border-gray-200`}>
-        <div className="px-6 py-4">
+      {/* Mobile Menu - Improved animation and spacing */}
+      <div 
+        className={`lg:hidden fixed left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40 transition-all duration-300 ease-in-out ${
+          isMobileMenuOpen ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
+        }`}
+        style={{top: isMobileMenuOpen ? '70px' : '-100%', maxHeight: isMobileMenuOpen ? 'calc(100vh - 70px)' : '0', overflowY: 'auto'}}
+      >
+        <div className="px-4 py-4">
           
-          {/* Mobile Navigation Links */}
-          <div className="flex flex-col space-y-3 mb-6">
+          {/* Mobile Navigation Links - Improved touch targets */}
+          <div className="flex flex-col space-y-2 mb-6">
             {navigationItems.map((item) => (
               <a
                 key={item.name}
@@ -180,7 +225,7 @@ const EcoTechNavbar = () => {
                   setActiveItem(item.name);
                   setIsMobileMenuOpen(false);
                 }}
-                className={`px-4 py-3 text-base font-medium transition-colors duration-200 rounded-lg ${
+                className={`px-4 py-3 text-base font-medium transition-colors duration-200 rounded-lg min-h-[44px] flex items-center ${
                   activeItem === item.name
                     ? 'text-green-600 bg-green-50 border-l-4 border-green-500'
                     : 'text-gray-700 hover:text-green-600 hover:bg-gray-50'
@@ -191,53 +236,61 @@ const EcoTechNavbar = () => {
             ))}
           </div>
 
-          {/* Mobile Actions */}
+          {/* Mobile Actions - Better spacing and touch targets */}
           <div className="space-y-4">
             
-            {/* Mobile Search and Cart */}
+            {/* Mobile Search and Profile */}
             <div className="flex items-center justify-around py-4 bg-gray-50 rounded-lg">
-              <button className="flex flex-col items-center p-3 hover:bg-gray-100 rounded-lg transition-colors">
+              <button className="flex flex-col items-center p-3 hover:bg-gray-100 rounded-lg transition-colors min-w-[70px] min-h-[70px]">
                 <svg className="w-6 h-6 text-gray-600 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <span className="text-xs text-gray-600">Search</span>
               </button>
               
-              <button className="flex flex-col items-center p-3 hover:bg-gray-100 rounded-lg transition-colors relative">
-                <svg className="w-6 h-6 text-gray-600 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13v6a1 1 0 001 1h8a1 1 0 001-1v-6m-9 0h10" />
+              <Link to="/profile" className="flex flex-col items-center p-3 hover:bg-gray-100 rounded-lg transition-colors min-w-[70px] min-h-[70px]">
+                {localStorage.getItem("userProfileImage") ? (
+                  <img 
+                    src={localStorage.getItem("userProfileImage") || ""} 
+                    alt="User"
+                    className="w-10 h-10 rounded-full object-cover mb-1 border-2 border-green-500"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center font-semibold mb-1">
+                    {getUserInitials()}
+                  </div>
+                )}
+                <span className="text-xs text-gray-600">Profile</span>
+              </Link>
+              
+              <button 
+                onClick={handleLogout}
+                className="flex flex-col items-center p-3 hover:bg-gray-100 rounded-lg transition-colors min-w-[70px] min-h-[70px]"
+              >
+                <svg className="w-6 h-6 text-red-500 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
-                <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">1</span>
-                <span className="text-xs text-gray-600">Cart</span>
+                <span className="text-xs text-red-500">Sign Out</span>
               </button>
             </div>
 
-            {/* Mobile User Info */}
+            {/* User Info Card */}
             {username && (
-              <div className="bg-gray-50 rounded-lg p-4">
+              <div className="bg-gray-50 rounded-lg p-4 mb-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="text-sm text-gray-600">Welcome</div>
-                    <div className="text-base font-semibold text-gray-800">{username}</div>
+                    <div className="text-base font-semibold text-gray-800 truncate max-w-[200px]">{username}</div>
                   </div>
-                  <button 
-                    onClick={() => {
-                      handleLogout();
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-1"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                    <span>Log out</span>
-                  </button>
                 </div>
               </div>
             )}
           </div>
         </div>
       </div>
+      
+      {/* Spacer for fixed header */}
+      {isMobileMenuOpen && <div className="lg:hidden h-screen w-full bg-black bg-opacity-50 fixed inset-0 z-30" onClick={() => setIsMobileMenuOpen(false)}></div>}
     </nav>
   );
 };
