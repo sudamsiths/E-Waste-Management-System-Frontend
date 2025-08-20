@@ -2,8 +2,8 @@ import Footer from "../common/Footer";
 
 const ClientInterface02: React.FC = () => {
   return (
-    <div className="user-interface-section pt-[70px] sm:pt-[90px]">
-      <div className="main-container bg-[#D3F6B7] w-full px-4 sm:px-6 md:px-10 lg:px-16 py-8 md:py-12 lg:py-16">
+    <div className="user-interface-section w-full">
+      <div className="main-container bg-[#D3F6B7] w-full px-4 sm:px-6 md:px-10 lg:px-16 py-8 md:py-12 lg:py-16 mb-0">
         <div className="content-wrapper flex flex-col md:flex-row gap-6 md:gap-10 lg:gap-20">
           <div className="text-column w-full md:w-1/2 order-2 md:order-1">
             <div className="text-content">
@@ -48,6 +48,5 @@ const ClientInterface02: React.FC = () => {
     </div>
   );
 };
-
 
 export default ClientInterface02;

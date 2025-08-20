@@ -80,7 +80,7 @@ const Clientinterface03: React.FC = () => {
   };
 
   return (
-    <div className="w-full min-h-[345px] flex items-center justify-between px-4 sm:px-8 md:px-12 lg:px-16 py-8 bg-[#BBF58C] mx-auto md:flex-row flex-col md:py-12 gap-8">
+    <div className="w-full min-h-[345px] flex items-center justify-between px-4 sm:px-8 md:px-12 lg:px-16 py-8 bg-[#BBF58C] mx-auto md:flex-row flex-col md:py-12 gap-8 mt-0">
       {/* Title Section - With consistent width */}
       <div className="flex-1 text-center md:text-left max-w-full md:max-w-md">
         <h2 className="text-[#5C5656] font-bold text-2xl sm:text-3xl md:text-4xl lg:text-[42px] leading-[1.2] font-['Inter'] m-0">

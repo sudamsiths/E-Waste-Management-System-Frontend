@@ -1,8 +1,9 @@
+import React from "react";
 import Footer from "../common/Footer";
 
 const Clientinterface04: React.FC = () => {
   return (
-    <div className="overflow-hidden">
+    <div className="overflow-hidden mt-0">
       <div className="bg-[#CDEEAB] flex w-full flex-col items-center justify-center px-4 pt-4 pb-16 sm:px-6 sm:pt-6 sm:pb-20 md:px-8 md:pt-8 md:pb-24 lg:px-16 lg:pt-8 lg:pb-24">
         {/* Section Label - Centered */}
         <div className="text-[#8BC34A] text-center text-lg sm:text-xl font-normal font-['Inter']">
