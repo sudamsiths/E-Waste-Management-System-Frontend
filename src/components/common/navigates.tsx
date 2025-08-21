@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import ClientInterface02 from "../interface/ClientInterface02";
-import ClientInterface01 from "../interface/Clientinterface01";
-import Clientinterface03 from "../interface/Clientinterface03";
-import Clientinterface04 from "../interface/Clientinterface04";
+import ClientInterface02 from "../Clientinterface/ClientInterface02";
+import ClientInterface01 from "../Clientinterface/Clientinterface01";
+import Clientinterface03 from "../Clientinterface/Clientinterface03";
+import Clientinterface04 from "../Clientinterface/Clientinterface04";
 import Footer from "./Footer";
 import Header from "./Header";
+import AdminDashboard from "../Admininterface/AdminDashboard";
 
 function navigate() {
   const [showWelcome, setShowWelcome] = useState(false);
