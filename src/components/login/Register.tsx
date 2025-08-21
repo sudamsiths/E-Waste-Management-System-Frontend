@@ -4,7 +4,7 @@ import axios from 'axios';
 
 interface FormData {
   fullName: string;
-  contactNumber: string; // Changed back to string for input handling
+  contactNumber: string; 
   username: string;
   email: string;
   address: string;
@@ -15,7 +15,7 @@ interface FormData {
 
 interface ValidationErrors {
   fullName?: string;
-  contactNumber?: string; // Changed to string to match FormData interface
+  contactNumber?: string; 
   username?: string;
   email?: string;
   address?: string;
@@ -86,21 +86,24 @@ const Register: React.FC = () => {
       newErrors.agreeToTerms = 'You must agree to the Terms of Service and Privacy Policy';
     }
 
-    // Validate contact number as a number
+    // Validate contact number for format like 0722151182
     if (!formData.contactNumber.trim()) {
       newErrors.contactNumber = 'Contact number is required';
     } else {
       // Remove all non-digit characters
       const digits = formData.contactNumber.replace(/\D/g, '');
-      if (digits.length < 7) { // Minimum 7 digits for a valid phone number
-        newErrors.contactNumber = 'Please enter a valid contact number';
+      
+      // Check if it follows the local number format (e.g. 0722151182 - 10 digits starting with 0)
+      if (digits.length !== 10) {
+        newErrors.contactNumber = 'Phone number should be 10 digits (e.g., 0722151182)';
       }
-      // Check if it can be parsed as a number
-      if (isNaN(Number(digits))) {
-        newErrors.contactNumber = 'Contact number must contain only digits';
+      
+      // Check if it starts with 0
+      if (digits.length > 0 && !digits.startsWith('0')) {
+        newErrors.contactNumber = 'Phone number should start with 0';
       }
     }
-
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -116,6 +119,26 @@ const Register: React.FC = () => {
     }
   };
 
+  // Update the contact input handler to better format the numbers
+  const handleContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+    
+    // Allow only digits for the phone format 0722151182
+    value = value.replace(/\D/g, '');
+    
+    // Limit to 10 digits
+    if (value.length > 10) {
+      value = value.slice(0, 10);
+    }
+    
+    setFormData(prev => ({ ...prev, contactNumber: value }));
+    
+    // Clear any existing error when the user is typing
+    if (errors.contactNumber) {
+      setErrors(prev => ({ ...prev, contactNumber: undefined }));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -127,21 +150,23 @@ const Register: React.FC = () => {
     setApiError(null);
 
     try {
-      // Extract only digits from the contact number
-      const digitsOnly = formData.contactNumber.replace(/\D/g, '');
-      const contactNumberAsInt = parseInt(digitsOnly, 10);
+      // Just keep the digits, no need for additional formatting
+      const phoneNumber = formData.contactNumber.replace(/\D/g, '');
       
-      // Check if we have a valid number
-      if (isNaN(contactNumberAsInt)) {
-        setApiError('Invalid contact number format');
+      // Ensure it's in the correct format
+      if (phoneNumber.length !== 10 || !phoneNumber.startsWith('0')) {
+        setErrors(prev => ({ 
+          ...prev, 
+          contactNumber: 'Phone number should be 10 digits and start with 0 (e.g., 0722151182)' 
+        }));
         setIsSubmitting(false);
         return;
       }
       
-      // Prepare data for API with integer contact number
+      // Prepare user data with the properly formatted phone number
       const userData = {
         fullName: formData.fullName,
-        contactNumber: contactNumberAsInt, // Send as integer, not string
+        contactNumber: phoneNumber, // Phone number in format 0722151182
         username: formData.username,
         email: formData.email,
         address: formData.address,
@@ -150,15 +175,24 @@ const Register: React.FC = () => {
       };
 
       console.log('Sending registration data:', userData);
+      console.log('Contact number type:', typeof userData.contactNumber);
       
-      // Send registration request
+      // Make sure the API request doesn't convert the data
       const response = await axios.post('http://localhost:8081/users/register', userData, {
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        transformRequest: [(data) => {
+          // Prevent automatic transformation by Axios
+          return JSON.stringify(data);
+        }]
       });
       
       console.log('Registration successful:', response.data);
+      
+      // Store registration success in localStorage for display on login page
+      localStorage.setItem("registrationSuccess", "true");
+      localStorage.setItem("registeredUsername", formData.username);
       
       // Navigate to login page or show success message
       navigate('/login', { state: { registrationSuccess: true } });
@@ -281,8 +315,8 @@ const Register: React.FC = () => {
                     <input
                       type="tel"
                       value={formData.contactNumber}
-                      onChange={handleInputChange('contactNumber')}
-                      placeholder="Enter numbers only (e.g. 94721234567)"
+                      onChange={handleContactChange}
+                      placeholder="Enter your number (e.g., 0722151182)"
                       className="w-full h-12 sm:h-12 text-base bg-gradient-to-b from-green-800/40 to-green-900/40 border-2 border-green-700 rounded-xl px-4 pr-12 text-yellow-200 placeholder-yellow-200/70 focus:outline-none focus:border-green-400 transition-colors"
                     />
                     <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
@@ -294,7 +328,7 @@ const Register: React.FC = () => {
                   {errors.contactNumber && (
                     <p className="text-red-400 text-xs mt-1">{errors.contactNumber}</p>
                   )}
-                  <p className="text-yellow-200/70 text-xs mt-1">Format: numbers only without spaces or symbols (e.g., 94721234567)</p>
+                  <p className="text-yellow-200/70 text-xs mt-1">Format: 10 digits starting with 0 (e.g., 0722151182)</p>
                 </div>
               </div>
 
@@ -562,5 +596,6 @@ const Register: React.FC = () => {
       </div>
   );
 };
+
 
 export default Register;

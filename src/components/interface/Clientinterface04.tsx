@@ -1,5 +1,4 @@
 import React from "react";
-import Footer from "../common/Footer";
 
 const Clientinterface04: React.FC = () => {
   return (

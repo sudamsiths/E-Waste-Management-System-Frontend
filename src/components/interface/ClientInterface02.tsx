@@ -1,5 +1,3 @@
-import Footer from "../common/Footer";
-
 const ClientInterface02: React.FC = () => {
   return (
     <div className="user-interface-section w-full">

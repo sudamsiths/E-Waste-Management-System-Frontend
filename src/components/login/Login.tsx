@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 
 interface ValidationErrors {
@@ -19,6 +19,7 @@ const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -27,6 +28,57 @@ const Login: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [registrationSuccess, setRegistrationSuccess] = useState<boolean>(false);
+  const [registeredUsername, setRegisteredUsername] = useState<string | null>(null);
+  const [loginSuccess, setLoginSuccess] = useState<boolean>(false);
+  const [loginAnimation, setLoginAnimation] = useState<boolean>(false);
+
+  useEffect(() => {
+    // Check for existing success information - registration and login
+    const regSuccess = localStorage.getItem("registrationSuccess");
+    const regUsername = localStorage.getItem("registeredUsername");
+    const loginSuccessFlag = localStorage.getItem("loginSuccess");
+    
+    // Set registration success if present
+    if (regSuccess === "true") {
+      setRegistrationSuccess(true);
+      setRegisteredUsername(regUsername);
+      
+      // Pre-fill the username field
+      if (regUsername) {
+        setUsername(regUsername);
+      }
+      
+      // Clear the registration success flags after 5 seconds
+      setTimeout(() => {
+        setRegistrationSuccess(false);
+        localStorage.removeItem("registrationSuccess");
+        localStorage.removeItem("registeredUsername");
+      }, 5000);
+    }
+
+    // Set login animation to true after a brief delay to allow the component to render
+    setTimeout(() => {
+      setLoginAnimation(true);
+    }, 100);
+    
+    // Show login success message if coming back to login page
+    if (loginSuccessFlag === "true") {
+      setLoginSuccess(true);
+      
+      // Clear the login success flag after 5 seconds
+      setTimeout(() => {
+        setLoginSuccess(false);
+        localStorage.removeItem("loginSuccess");
+      }, 5000);
+    }
+    
+    // Also check location state for registration success
+    const locationState = location.state as { registrationSuccess?: boolean };
+    if (locationState?.registrationSuccess) {
+      setRegistrationSuccess(true);
+    }
+  }, [location]);
 
   const validateUsername = (username: string): string | undefined => {
     if (!username) {
@@ -134,9 +186,18 @@ const Login: React.FC = () => {
           localStorage.removeItem("rememberMe");
         }
 
-        console.log("Token stored successfully:", token);
-        console.log("Navigating to /Clientinterface");
-        navigate("/Navigate");
+        // Set login success flag for when user returns to login page
+        localStorage.setItem("loginSuccess", "true");
+        localStorage.setItem("lastLoginUsername", username);
+        
+        // Show success message briefly before redirecting
+        setLoginSuccess(true);
+        
+        // Add a slight delay before navigation to show the success message
+        setTimeout(() => {
+          console.log("Navigating to /Clientinterface");
+          navigate("/Navigate");
+        }, 800);
       } else {
         throw new Error("No token received from server");
       }
@@ -163,10 +224,10 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="login-container">
+    <div className="login-container font-['Inter']">
       <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       />
 
       <div className="decorative-elements">
@@ -195,7 +256,7 @@ const Login: React.FC = () => {
         <div className="dot-3"><svg width="6" height="6" viewBox="0 0 6 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path opacity="0.7" d="M3 5.73332C4.38071 5.73332 5.5 4.45982 5.5 2.88888C5.5 1.31793 4.38071 0.0444336 3 0.0444336C1.61929 0.0444336 0.5 1.31793 0.5 2.88888C0.5 4.45982 1.61929 5.73332 3 5.73332Z" fill="#5A9D85"/></svg></div>
       </div>
 
-      <div className="branding-section">
+      <div className={`branding-section`}>
         <div className="logo-container">
           <img src="src/assets/img/E_waste_Management_System_Logo-removebg-preview.png" alt="E-Waste Manager Logo"/>
         </div>
@@ -213,15 +274,33 @@ const Login: React.FC = () => {
         <p className="brand-description">Join us in making a difference by managing electronic waste responsibly and sustainably.</p>
       </div>
 
-      <div className="login-section">
-        <div className="login-card">
+      <div className={`login-section`}>
+        <div className={`login-card `}>
+          {registrationSuccess && (
+            <div className="success-alert mb-4 p-3 bg-green-100 border border-green-300 text-green-800 rounded-lg flex items-center animate-bounce-in">
+              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <span>Registration successful! {registeredUsername ? `Welcome ${registeredUsername}, please login.` : 'Please login to continue.'}</span>
+            </div>
+          )}
+          
+          {loginSuccess && (
+            <div className="success-alert mb-4 p-3 bg-blue-100 border border-blue-300 text-blue-800 rounded-lg flex items-center animate-bounce-in">
+              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <span>Login successful! Redirecting to dashboard...</span>
+            </div>
+          )}
+
           <h2 className="welcome-title">Welcome Back</h2>
           <p className="welcome-subtitle">Sign in to your account</p>
 
           {loginError && (
-            <div className="error-alert">
+            <div className="error-alert mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1C4.13 1 1 4.13 1 8s3.13 7 7 7 7-3.13 7-7-3.13-7-7-7z" fill="#ff6b6b" fillOpacity="0.2" stroke="#ff6b6b"/><path d="M8 5v4M8 11h.01" stroke="#ff6b6b" strokeWidth="2" strokeLinecap="round"/></svg>
-              <span>{loginError}</span>
+              <span className="ml-2">{loginError}</span>
             </div>
           )}
 
@@ -294,7 +373,11 @@ const Login: React.FC = () => {
               <a href="#" className="forgot-password">Forgot Password?</a>
             </div>
 
-            <button type="submit" className={`sign-in-btn ${isSubmitting ? "submitting" : ""}`} disabled={isSubmitting}>
+            <button 
+              type="submit" 
+              className={`sign-in-btn ${isSubmitting || loginSuccess ? "submitting" : ""} transition-all duration-300 hover:shadow-lg`} 
+              disabled={isSubmitting || loginSuccess}
+            >
               {isSubmitting ? (
                 <div className="loading-spinner">
                   <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -303,6 +386,13 @@ const Login: React.FC = () => {
                     </path>
                   </svg>
                   Signing In...
+                </div>
+              ) : loginSuccess ? (
+                <div className="success-spinner">
+                  <svg className="w-5 h-5 mr-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  Success!
                 </div>
               ) : (
                 "Sign In"

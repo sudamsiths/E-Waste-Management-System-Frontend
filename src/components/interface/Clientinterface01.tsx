@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import Header from "../common/Header";
-import Footer from "../common/Footer";
 
 function UserInterface() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -48,6 +47,91 @@ function UserInterface() {
                 className="absolute block w-full h-full object-cover top-0 left-0" 
                 alt={`Carousel item ${index + 1}`} 
               />
+              
+              {/* First slide content */}
+              {index === 0 && (
+                <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-transparent flex items-center">
+                  <div className="text-left text-white px-8 md:px-16 py-6 max-w-2xl mx-4 md:mx-10">
+                    <span className="inline-block px-4 py-1 bg-green-600 rounded-full text-xs md:text-sm font-semibold mb-4 tracking-wider animate-fade-in">SUSTAINABLE FUTURE</span>
+                    <h1 className="text-4xl md:text-6xl font-bold mb-4 leading-tight animate-fade-in-left">
+                      Recycle Your <span className="text-green-400">Electronic</span> Waste
+                    </h1>
+                    <p className="text-lg md:text-xl mb-6 leading-relaxed text-gray-200 animate-fade-in-left animation-delay-300">
+                      Join the movement towards a sustainable future. Every piece of e-waste recycled today 
+                      is a step towards protecting our environment and conserving valuable resources.
+                    </p>
+                    <div className="flex flex-wrap gap-4 animate-fade-in-left animation-delay-600">
+                      <button className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors duration-300 flex items-center gap-2" style={{cursor: 'pointer'}}>
+                        <span>Schedule Pickup</span>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                        </svg>
+                      </button>
+                      <button className="bg-transparent border-2 border-white hover:bg-white/10 text-white font-semibold py-3 px-8 rounded-lg transition-colors duration-300" style={{cursor: 'pointer'}}>
+                        Learn More
+                      </button>
+                    </div>
+                    <div className="mt-8 flex items-center gap-4 animate-fade-in-left animation-delay-900">
+                      <div className="flex -space-x-2">
+                        {[1, 2, 3].map(i => (
+                          <div key={i} className="w-8 h-8 rounded-full bg-green-500 border-2 border-white flex items-center justify-center text-xs font-bold">
+                            {i}
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-sm text-gray-300">Join <span className="text-white font-bold">5,000+</span> people who already recycled their e-waste</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Second slide content */}
+              {index === 1 && (
+                <div className="absolute inset-0 bg-gradient-to-l from-black/70 to-transparent flex items-center justify-end">
+                  <div className="text-right text-white px-8 md:px-16 py-6 max-w-2xl mx-4 md:mx-10">
+                    <span className="inline-block px-4 py-1 bg-amber-600 rounded-full text-xs md:text-sm font-semibold mb-4 tracking-wider animate-fade-in">WASTE REDUCTION</span>
+                    <h2 className="text-4xl md:text-5xl font-bold mb-4 leading-tight animate-fade-in-right">
+                      Transform <span className="text-amber-400">Waste</span> into Resources
+                    </h2>
+                    <p className="text-lg md:text-xl mb-6 leading-relaxed text-gray-200 animate-fade-in-right animation-delay-300">
+                      Your discarded electronics contain valuable materials that can be recovered and reused. 
+                      Help reduce landfill waste by properly recycling your electronic devices.
+                    </p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Third slide content */}
+              {index === 2 && (
+                <div className="absolute inset-0 bg-gradient-to-b from-black/70 to-transparent flex items-start pt-20 md:pt-32">
+                  <div className="text-center text-white px-8 md:px-16 py-6 max-w-3xl mx-auto">
+                    <span className="inline-block px-4 py-1 bg-blue-600 rounded-full text-xs md:text-sm font-semibold mb-4 tracking-wider animate-fade-in">ENERGY EFFICIENCY</span>
+                    <h2 className="text-4xl md:text-5xl font-bold mb-4 leading-tight animate-fade-up">
+                      Bright Ideas for <span className="text-blue-400">Energy</span> Conservation
+                    </h2>
+                    <p className="text-lg md:text-xl mb-6 leading-relaxed text-gray-200 animate-fade-up animation-delay-300">
+                      Recycling one million laptops saves enough energy to power 3,500 homes for a year.
+                      Make the switch to energy-efficient electronics and responsibly recycle your old ones.
+                    </p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Fourth slide content */}
+              {index === 3 && (
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex items-end pb-20 md:pb-32">
+                  <div className="text-center text-white px-8 md:px-16 py-6 max-w-3xl mx-auto">
+                    <span className="inline-block px-4 py-1 bg-red-600 rounded-full text-xs md:text-sm font-semibold mb-4 tracking-wider animate-fade-in">ENVIRONMENTAL IMPACT</span>
+                    <h2 className="text-4xl md:text-5xl font-bold mb-4 leading-tight animate-fade-up">
+                      Prevent <span className="text-red-400">Toxic</span> Pollution
+                    </h2>
+                    <p className="text-lg md:text-xl mb-6 leading-relaxed text-gray-200 animate-fade-up animation-delay-300">
+                      E-waste contains harmful substances like lead, mercury, and cadmium that can contaminate soil and water. 
+                      Proper disposal prevents these toxins from harming our environment and communities.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
