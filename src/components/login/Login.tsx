@@ -145,6 +145,63 @@ const Login: React.FC = () => {
     }
   };
 
+  // Enhanced role validation function
+  const validateUserRole = (backendRole: string, selectedRole: string): { isValid: boolean; errorMessage?: string } => {
+    const normalizedBackendRole = backendRole.toUpperCase();
+    const normalizedSelectedRole = selectedRole.toUpperCase();
+
+    if (normalizedBackendRole !== normalizedSelectedRole) {
+      if (normalizedSelectedRole === "ADMIN" && normalizedBackendRole === "CUSTOMER") {
+        return {
+          isValid: false,
+          errorMessage: "Access Denied: You cannot login to the Admin Dashboard. Your account is registered as a Customer. Please select 'Customer' and try again."
+        };
+      } else if (normalizedSelectedRole === "CUSTOMER" && normalizedBackendRole === "ADMIN") {
+        return {
+          isValid: false,
+          errorMessage: "Access Denied: You cannot login to the Customer Dashboard. Your account is registered as an Admin. Please select 'Admin' and try again."
+        };
+      } else {
+        return {
+          isValid: false,
+          errorMessage: `Role mismatch: You've selected "${selectedRole}" but your account is registered as "${backendRole.toLowerCase()}". Please select the correct role and try again.`
+        };
+      }
+    }
+
+    return { isValid: true };
+  };
+
+  // Enhanced navigation function
+  const navigateBasedOnRole = (userRole: string) => {
+    const normalizedRole = userRole.toUpperCase();
+    
+    console.log(`Navigating user with role: ${normalizedRole}`);
+    
+    if (normalizedRole === "ADMIN") {
+      console.log("Admin role detected, navigating to AdminDashboard");
+      navigate("/AdminDashboard", { 
+        state: { 
+          loginSuccess: true, 
+          userRole: normalizedRole,
+          username: username 
+        } 
+      });
+    } else if (normalizedRole === "CUSTOMER") {
+      console.log("Customer role detected, navigating to client dashboard");
+      navigate("/Navigate", { 
+        state: { 
+          loginSuccess: true, 
+          userRole: normalizedRole,
+          username: username 
+        } 
+      });
+    } else {
+      console.error("Unknown role detected:", normalizedRole);
+      setLoginError("Unknown user role. Please contact support.");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError(null);
@@ -159,21 +216,24 @@ const Login: React.FC = () => {
       const loginData = {
         username,
         password,
-        role: userType.toUpperCase(),
+        role: userType.toUpperCase(), // Send the selected role to backend
       };
+
+      console.log("Attempting login with data:", { ...loginData, password: "***" });
 
       const response = await axios.post<string | LoginResponse>(
         "http://localhost:8081/users/login",
         loginData
       );
 
-      console.log("Login successful:", response.data);
+      console.log("Login response received:", response.data);
 
       let token: string;
       let userRole: string;
       let userName: string;
       let userId: string;
 
+      // Handle different response formats
       if (typeof response.data === 'string') {
         token = response.data;
         userRole = userType.toUpperCase();
@@ -186,47 +246,50 @@ const Login: React.FC = () => {
         userId = response.data.userId || '';
       }
 
-      // Check if selected role matches the backend role
-      if (userType.toUpperCase() !== userRole) {
-        setLoginError(`Role mismatch: You've selected "${userType}" but your account is registered as "${userRole.toLowerCase()}". Please select the correct role and try again.`);
+      console.log("Extracted user data:", { userRole, userName, userId });
+
+      // Enhanced role validation
+      const roleValidation = validateUserRole(userRole, userType);
+      
+      if (!roleValidation.isValid) {
+        setLoginError(roleValidation.errorMessage || "Role validation failed");
         setIsSubmitting(false);
         return;
       }
 
-      if (token) {
-        // Store auth data in localStorage
-        localStorage.setItem("authToken", token);
-        localStorage.setItem("userRole", userRole);
-        localStorage.setItem("username", userName);
-        localStorage.setItem("userId", userId);
-
-        if (rememberMe) {
-          localStorage.setItem("rememberMe", "true");
-        } else {
-          localStorage.removeItem("rememberMe");
-        }
-
-        // Set login success flag for when user returns to login page
-        localStorage.setItem("loginSuccess", "true");
-        localStorage.setItem("lastLoginUsername", username);
-        
-        // Show success message briefly before redirecting
-        setLoginSuccess(true);
-        
-        // Add a slight delay before navigation to show the success message
-        setTimeout(() => {
-          // Role-based navigation
-          if (userRole === "ADMIN") {
-            console.log("Admin role detected, navigating to AdminDashboard");
-            navigate("/AdminDashboard");
-          } else {
-            console.log("Customer role detected, navigating to client dashboard");
-            navigate("/Navigate"); // Navigate to client dashboard
-          }
-        }, 800);
-      } else {
-        throw new Error("No token received from server");
+      // Verify token exists
+      if (!token) {
+        throw new Error("No authentication token received from server");
       }
+
+      // Store auth data in localStorage
+      localStorage.setItem("authToken", token);
+      localStorage.setItem("userRole", userRole.toUpperCase());
+      localStorage.setItem("username", userName);
+      localStorage.setItem("userId", userId);
+
+      // Handle remember me option
+      if (rememberMe) {
+        localStorage.setItem("rememberMe", "true");
+        localStorage.setItem("lastLoginUsername", username);
+      } else {
+        localStorage.removeItem("rememberMe");
+        localStorage.removeItem("lastLoginUsername");
+      }
+
+      // Set login success flag for when user returns to login page
+      localStorage.setItem("loginSuccess", "true");
+      
+      // Show success message briefly before redirecting
+      setLoginSuccess(true);
+      
+      console.log("Login successful, preparing navigation...");
+      
+      // Add a slight delay before navigation to show the success message
+      setTimeout(() => {
+        navigateBasedOnRole(userRole);
+      }, 800);
+
     } catch (error) {
       console.error("Login failed:", error);
 
@@ -234,13 +297,25 @@ const Login: React.FC = () => {
         const statusCode = error.response.status;
         const errorMessage = error.response.data?.message || "Login failed";
 
+        console.log("Error response:", { statusCode, errorMessage });
+
         if (statusCode === 401) {
           setLoginError("Invalid credentials. Please check your username and password.");
         } else if (statusCode === 403) {
           setLoginError("Access denied. You don't have permission to access this resource.");
-        } else if (statusCode === 400 && errorMessage.includes("role")) {
-          // Handle role mismatch specifically
-          setLoginError(`Role mismatch: ${errorMessage}. Please select the correct role.`);
+        } else if (statusCode === 400) {
+          if (errorMessage.toLowerCase().includes("role")) {
+            // Handle role mismatch from backend
+            if (userType === "admin") {
+              setLoginError("Access Denied: You cannot login to the Admin Dashboard. Your account is registered as a Customer. Please select 'Customer' and try again.");
+            } else {
+              setLoginError("Access Denied: You cannot login to the Customer Dashboard. Your account is registered as an Admin. Please select 'Admin' and try again.");
+            }
+          } else {
+            setLoginError(errorMessage);
+          }
+        } else if (statusCode === 422) {
+          setLoginError("Invalid input data. Please check your credentials and try again.");
         } else {
           setLoginError(errorMessage);
         }
@@ -249,6 +324,14 @@ const Login: React.FC = () => {
       }
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Clear error when user changes role selection
+  const handleRoleChange = (newRole: "customer" | "admin") => {
+    setUserType(newRole);
+    if (loginError && loginError.toLowerCase().includes("role")) {
+      setLoginError(null);
     }
   };
 
@@ -321,7 +404,7 @@ const Login: React.FC = () => {
               <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
-              <span>Login successful! Redirecting to dashboard...</span>
+              <span>Login successful! Redirecting to {userType === 'admin' ? 'Admin' : 'Customer'} dashboard...</span>
             </div>
           )}
           
@@ -340,12 +423,56 @@ const Login: React.FC = () => {
 
           {loginError && (
             <div className="error-alert mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1C4.13 1 1 4.13 1 8s3.13 7 7 7 7-3.13 7-7-3.13-7-7-7z" fill="#ff6b6b" fillOpacity="0.2" stroke="#ff6b6b"/><path d="M8 5v4M8 11h.01" stroke="#ff6b6b" strokeWidth="2" strokeLinecap="round"/></svg>
-              <span className="ml-2">{loginError}</span>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="flex-shrink-0">
+                <path d="M8 1C4.13 1 1 4.13 1 8s3.13 7 7 7 7-3.13 7-7-3.13-7-7-7z" fill="#ff6b6b" fillOpacity="0.2" stroke="#ff6b6b"/>
+                <path d="M8 5v4M8 11h.01" stroke="#ff6b6b" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+              <span className="ml-2 text-sm text-red-700">{loginError}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="login-form">
+            {/* User Type Selection - Moved to top for better UX */}
+            <div className="user-type-selection mb-4">
+              <div className="user-type-label">Login as:</div>
+              <div className="radio-group">
+                <label className="radio-option">
+                  <input 
+                    type="radio" 
+                    name="userType" 
+                    value="customer" 
+                    checked={userType === "customer"} 
+                    onChange={(e) => handleRoleChange(e.target.value as "customer" | "admin")} 
+                    className="radio-input"
+                  />
+                  <div className="radio-custom">
+                    <svg width="21" height="21" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="10.5" cy="10.5" r="9.5" stroke="#90C67C" strokeWidth="2"/>
+                      {userType === "customer" && <circle cx="10.5" cy="10.5" r="5" fill="#328E6E" />}
+                    </svg>
+                  </div>
+                  <span>Customer</span>
+                </label>
+                <label className="radio-option">
+                  <input 
+                    type="radio" 
+                    name="userType" 
+                    value="admin" 
+                    checked={userType === "admin"} 
+                    onChange={(e) => handleRoleChange(e.target.value as "customer" | "admin")} 
+                    className="radio-input"
+                  />
+                  <div className="radio-custom">
+                    <svg width="21" height="21" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="10.5" cy="10.5" r="9.5" stroke="#90C67C" strokeWidth="2"/>
+                      {userType === "admin" && <circle cx="10.5" cy="10.5" r="5" fill="#328E6E" />}
+                    </svg>
+                  </div>
+                  <span>Admin</span>
+                </label>
+              </div>
+            </div>
+
             <div className="input-group">
               <label className="input-label">Username</label>
               <div className="input-wrapper">
@@ -366,7 +493,10 @@ const Login: React.FC = () => {
               </div>
               {errors.username && (
                 <div className="error-message" id="username-error">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 1C4.13 1 1 4.13 1 8s3.13 7 7 7 7-3.13 7-7-3.13-7-7-7zm0 13c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z" fill="#ff6b6b"/><path d="M8 4v4M8 10h.01" stroke="#ff6b6b" strokeWidth="2" strokeLinecap="round"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8 1C4.13 1 1 4.13 1 8s3.13 7 7 7 7-3.13 7-7-3.13-7-7-7zm0 13c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z" fill="#ff6b6b"/>
+                    <path d="M8 4v4M8 10h.01" stroke="#ff6b6b" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
                   {errors.username}
                 </div>
               )}
@@ -386,15 +516,25 @@ const Login: React.FC = () => {
                 />
                 <div className="password-icon" onClick={() => setShowPassword(!showPassword)}>
                   {showPassword ? (
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 8s3-5 7-5 7 5 7 5-3 5-7 5-7-5-7-5z" stroke={errors.password ? "#ff6b6b" : "#90C67C"} strokeWidth="1.5"/><circle cx="8" cy="8" r="3" stroke={errors.password ? "#ff6b6b" : "#90C67C"} strokeWidth="1.5"/><path d="M1 1l14 14" stroke={errors.password ? "#ff6b6b" : "#90C67C"} strokeWidth="1.5"/></svg>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M1 8s3-5 7-5 7 5 7 5-3 5-7 5-7-5-7-5z" stroke={errors.password ? "#ff6b6b" : "#90C67C"} strokeWidth="1.5"/>
+                      <circle cx="8" cy="8" r="3" stroke={errors.password ? "#ff6b6b" : "#90C67C"} strokeWidth="1.5"/>
+                      <path d="M1 1l14 14" stroke={errors.password ? "#ff6b6b" : "#90C67C"} strokeWidth="1.5"/>
+                    </svg>
                   ) : (
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 8s3-5 7-5 7 5 7 5-3 5-7 5-7-5-7-5z" stroke={errors.password ? "#ff6b6b" : "#90C67C"} strokeWidth="1.5"/><circle cx="8" cy="8" r="3" stroke={errors.password ? "#ff6b6b" : "#90C67C"} strokeWidth="1.5"/></svg>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M1 8s3-5 7-5 7 5 7 5-3 5-7 5-7-5-7-5z" stroke={errors.password ? "#ff6b6b" : "#90C67C"} strokeWidth="1.5"/>
+                      <circle cx="8" cy="8" r="3" stroke={errors.password ? "#ff6b6b" : "#90C67C"} strokeWidth="1.5"/>
+                    </svg>
                   )}
                 </div>
               </div>
               {errors.password && (
                 <div className="error-message" id="password-error">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 1C4.13 1 1 4.13 1 8s3.13 7 7 7 7-3.13 7-7-3.13-7-7-7zm0 13c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z" fill="#ff6b6b"/><path d="M8 4v4M8 10h.01" stroke="#ff6b6b" strokeWidth="2" strokeLinecap="round"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8 1C4.13 1 1 4.13 1 8s3.13 7 7 7 7-3.13 7-7-3.13-7-7-7zm0 13c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z" fill="#ff6b6b"/>
+                    <path d="M8 4v4M8 10h.01" stroke="#ff6b6b" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
                   {errors.password}
                 </div>
               )}
@@ -402,7 +542,12 @@ const Login: React.FC = () => {
 
             <div className="form-options">
               <label className="remember-me">
-                <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="checkbox-input"/>
+                <input 
+                  type="checkbox" 
+                  checked={rememberMe} 
+                  onChange={(e) => setRememberMe(e.target.checked)} 
+                  className="checkbox-input"
+                />
                 <div className="checkbox-custom">
                   <svg width="18" height="19" viewBox="0 0 18 19" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M14 1.55005H4C2.34315 1.55005 1 2.92528 1 4.62172V14.8606C1 16.557 2.34315 17.9323 4 17.9323H14C15.6569 17.9323 17 16.557 17 14.8606V4.62172C17 2.92528 15.6569 1.55005 14 1.55005Z" stroke="#90C67C" strokeWidth="2"/>
@@ -433,10 +578,10 @@ const Login: React.FC = () => {
                   <svg className="w-5 h-5 mr-2 text-white" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
-                  Success!
+                  Success! Redirecting to {userType === 'admin' ? 'Admin' : 'Customer'} Dashboard
                 </div>
               ) : (
-                "Sign In"
+                `Sign In as ${userType === 'admin' ? 'Admin' : 'Customer'}`
               )}
             </button>
 
@@ -450,33 +595,27 @@ const Login: React.FC = () => {
               Don't have an account?{" "}
               <Link to="/register" className="signup-text">Sign up</Link>
             </div>
+          </form>
 
-            <div className="user-type-selection">
-              <div className="user-type-label">Login as:</div>
-              <div className="radio-group">
-                <label className="radio-option">
-                  <input type="radio" name="userType" value="customer" checked={userType === "customer"} onChange={(e) => setUserType(e.target.value as "customer" | "admin")} className="radio-input"/>
-                  <div className="radio-custom">
-                    <svg width="21" height="21" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="10.5" cy="10.5" r="9.5" stroke="#90C67C" strokeWidth="2"/>
-                      {userType === "customer" && <circle cx="10.5" cy="10.5" r="5" fill="#328E6E" />}
-                    </svg>
-                  </div>
-                  <span>Customer</span>
-                </label>
-                <label className="radio-option">
-                  <input type="radio" name="userType" value="admin" checked={userType === "admin"} onChange={(e) => setUserType(e.target.value as "customer" | "admin")} className="radio-input"/>
-                  <div className="radio-custom">
-                    <svg width="21" height="21" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="10.5" cy="10.5" r="9.5" stroke="#90C67C" strokeWidth="2"/>
-                      {userType === "admin" && <circle cx="10.5" cy="10.5" r="5" fill="#328E6E" />}
-                    </svg>
-                  </div>
-                  <span>Admin</span>
-                </label>
+          {/* Role Information Card */}
+          <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+            <div className="flex items-start space-x-3">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="flex-shrink-0 mt-0.5">
+                <circle cx="10" cy="10" r="9" stroke="#4A8B7A" strokeWidth="2"/>
+                <path d="M10 6v4M10 14h.01" stroke="#4A8B7A" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+              <div className="text-sm">
+                <p className="font-medium text-gray-700 mb-1">Role Selection Guide:</p>
+                <ul className="text-gray-600 space-y-1">
+                  <li><strong>Customer:</strong> Schedule pickups, track waste, view reports</li>
+                  <li><strong>Admin:</strong> Manage all operations, users, and system settings</li>
+                </ul>
+                <p className="text-xs text-gray-500 mt-2">
+                  Make sure to select the role that matches your account registration.
+                </p>
               </div>
             </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>

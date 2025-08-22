@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 
 const EcoTechNavbar = () => {
   const [activeItem, setActiveItem] = useState('Home');
@@ -7,12 +7,20 @@ const EcoTechNavbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Check if user is logged in on component mount
   useEffect(() => {
     const storedUsername = localStorage.getItem("username");
     setUsername(storedUsername);
-  }, []);
+    
+    // Set active item based on current path
+    if (location.pathname === '/Navigate') {
+      setActiveItem('Home');
+    } else if (location.pathname === '/services') {
+      setActiveItem('Services');
+    }
+  }, [location.pathname]);
 
   const handleLogout = () => {
     // Clear all authentication data from localStorage
@@ -53,10 +61,36 @@ const EcoTechNavbar = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleNavigationClick = (item: string, href: string) => {
+    setActiveItem(item);
+    
+    // Handle route navigation based on item name
+    switch (item) {
+      case 'Home':
+        navigate('/Navigate');
+        setIsMobileMenuOpen(false);
+        return;
+      case 'Services':
+        navigate('/services');
+        setIsMobileMenuOpen(false);
+        return;
+      default:
+        // Handle other navigation items with anchor links
+        if (href.startsWith('#')) {
+          // If we're not on the home page and it's an anchor link, go to home first
+          if (location.pathname !== '/Navigate') {
+            navigate('/Navigate');
+          }
+          // For anchor links on the same page, just close the mobile menu
+          setIsMobileMenuOpen(false);
+        }
+    }
+  };
+
   const navigationItems = [
-    { name: 'Home', href: '#home' },
+    { name: 'Home', href: '/Navigate' },
     { name: 'Branches', href: '#branches' },
-    { name: 'Services', href: '#services' },
+    { name: 'Services', href: '/services' },
     { name: 'About', href: '#about' },
     { name: 'Contact', href: '#contact' },
     { name: 'Shop', href: '#shop' },
@@ -77,6 +111,7 @@ const EcoTechNavbar = () => {
               />
             </div>
             <button 
+              onClick={() => handleNavigationClick('Home', '/Navigate')}
               style={{cursor:'pointer'}} 
               className="flex items-center focus:outline-none"
             >
@@ -88,10 +123,9 @@ const EcoTechNavbar = () => {
           {/* Navigation Menu - Center (Hidden on mobile) */}
           <div className="hidden lg:flex items-center space-x-4 xl:space-x-8 flex-1 justify-center">
             {navigationItems.map((item) => (
-              <a
+              <button
                 key={item.name}
-                href={item.href}
-                onClick={() => setActiveItem(item.name)}
+                onClick={() => handleNavigationClick(item.name, item.href)}
                 className={`relative px-2 py-2 text-sm xl:text-base font-medium transition-colors duration-200 ${
                   activeItem === item.name
                     ? 'text-gray-800'
@@ -102,7 +136,7 @@ const EcoTechNavbar = () => {
                 {activeItem === item.name && (
                   <div className="absolute bottom-0 left-0 right-0 h-1 bg-green-500 rounded-full"></div>
                 )}
-              </a>
+              </button>
             ))}
           </div>
 
@@ -221,13 +255,9 @@ const EcoTechNavbar = () => {
           {/* Mobile Navigation Links - Improved touch targets */}
           <div className="flex flex-col space-y-2 mb-6">
             {navigationItems.map((item) => (
-              <a
+              <button
                 key={item.name}
-                href={item.href}
-                onClick={() => {
-                  setActiveItem(item.name);
-                  setIsMobileMenuOpen(false);
-                }}
+                onClick={() => handleNavigationClick(item.name, item.href)}
                 className={`px-4 py-3 text-base font-medium transition-colors duration-200 rounded-lg min-h-[44px] flex items-center ${
                   activeItem === item.name
                     ? 'text-green-600 bg-green-50 border-l-4 border-green-500'
@@ -235,7 +265,7 @@ const EcoTechNavbar = () => {
                 }`}
               >
                 {item.name}
-              </a>
+              </button>
             ))}
           </div>
 

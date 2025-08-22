@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import ClientInterface02 from "../Clientinterface/ClientInterface02";
 import ClientInterface01 from "../Clientinterface/Clientinterface01";
 import Clientinterface03 from "../Clientinterface/Clientinterface03";
 import Clientinterface04 from "../Clientinterface/Clientinterface04";
 import Footer from "./Footer";
 import Header from "./Header";
-import ClientService from "../Clientinterface/Services/ClientService";
 
 function navigate() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [unauthorized, setUnauthorized] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Check authentication and role on component mount
   useEffect(() => {
@@ -53,8 +53,10 @@ function navigate() {
     // Set username for welcome message
     setUsername(username);
 
-    // Check if user just logged in
-    const justLoggedIn = localStorage.getItem("loginSuccess") === "true";
+    // Check if user just logged in or came from another page
+    const justLoggedIn =
+      localStorage.getItem("loginSuccess") === "true" ||
+      location.state?.loginSuccess;
 
     if (justLoggedIn) {
       setShowWelcome(true);
@@ -69,7 +71,7 @@ function navigate() {
 
       return () => clearTimeout(timer);
     }
-  }, [navigate]);
+  }, [navigate, location]);
 
   // Close welcome message
   const handleCloseWelcome = () => {
@@ -151,7 +153,6 @@ function navigate() {
       <div className="flex-grow w-full">
         <ClientInterface01 />
 
-        {/* Remove gaps between these components by using negative margin or removing padding */}
         <div className="bg-white w-full overflow-hidden">
           <ClientInterface02 />
           <Clientinterface03 />
