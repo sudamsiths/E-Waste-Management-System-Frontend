@@ -151,7 +151,11 @@ const EcoTechNavbar = () => {
             </button>
 
             {/* Request Pickup Button (Responsive) */}
-            <button className="bg-green-500 hover:bg-green-600 text-white px-2 sm:px-4 py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 transition-colors duration-200 text-xs sm:text-sm font-medium touch-manipulation" style={{cursor:'pointer'}}>
+            <button
+              onClick={() => navigate('/ClientRequest')}
+              className="bg-green-500 hover:bg-green-600 text-white px-2 sm:px-4 py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 transition-colors duration-200 text-xs sm:text-sm font-medium touch-manipulation"
+              style={{cursor:'pointer'}}
+            >
               <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -304,6 +308,20 @@ const EcoTechNavbar = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
                 <span className="text-xs text-red-500">Sign Out</span>
+              </button>
+            </div>
+
+            {/* Add mobile Request Pickup quick action (optional) */}
+            <div className="flex items-center justify-around py-4 bg-gray-50 rounded-lg">
+              <button
+                onClick={() => { navigate('/ClientRequest'); setIsMobileMenuOpen(false); }}
+                className="flex flex-col items-center p-3 hover:bg-gray-100 rounded-lg transition-colors min-w-[70px] min-h-[70px]"
+              >
+                <svg className="w-6 h-6 text-green-600 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span className="text-xs text-gray-600">Pickup</span>
               </button>
             </div>
 

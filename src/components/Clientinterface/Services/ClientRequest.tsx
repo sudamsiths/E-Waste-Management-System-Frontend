@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import Header from '../../common/Header';
+import axios from 'axios'; // Import axios for API calls
+import { useNavigate } from 'react-router-dom'; // For navigation after submission
 
 // E-Waste category enum matching backend
 enum EWasteCategory {
@@ -41,6 +44,7 @@ interface FormData {
 }
 
 const ClientRequest: React.FC = () => {
+  const navigate = useNavigate(); // For navigation after submission
   const [formData, setFormData] = useState<FormData>({
     itemTitle: '',
     pickupLocation: '',
@@ -49,10 +53,13 @@ const ClientRequest: React.FC = () => {
     itemImage: null,
     description: ''
   });
-
+  
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [rewardPoints, setRewardPoints] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Track submission state
+  const [submitError, setSubmitError] = useState<string | null>(null); // Track submission errors
+  const [submitSuccess, setSubmitSuccess] = useState(false); // Track submission success
 
   // Calculate reward points when category or weight changes
   useEffect(() => {
@@ -151,45 +158,106 @@ const ClientRequest: React.FC = () => {
     setRewardPoints(0);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Modified handleSubmit function to connect with API
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Reset submission states
+    setIsSubmitting(true);
+    setSubmitError(null);
+    setSubmitSuccess(false);
     
     // Basic validation
     if (!formData.itemTitle || !formData.pickupLocation || !formData.category) {
-      alert('Please fill in all required fields');
+      setSubmitError('Please fill in all required fields');
+      setIsSubmitting(false);
       return;
     }
 
-    // Create final submission object including calculated points
-    const submissionData = {
-      ...formData,
-      rewardPoints
-    };
-    
-    console.log('Form submitted:', submissionData);
-    alert(`Request submitted successfully! You've earned ${rewardPoints} points.`);
-    handleReset();
+    try {
+      // Create FormData object for sending multipart/form-data (needed for file upload)
+      const submitFormData = new FormData();
+      
+      // Add text fields
+      submitFormData.append('title', formData.itemTitle);
+      submitFormData.append('location', formData.pickupLocation);
+      submitFormData.append('category', formData.category);
+      submitFormData.append('weight', formData.estimatedWeight);
+      submitFormData.append('description', formData.description);
+      submitFormData.append('rewardPoints', rewardPoints.toString());
+      
+      // Add user identification from localStorage
+      const userId = localStorage.getItem('userId');
+      if (userId) {
+        submitFormData.append('userId', userId);
+      }
+      
+      // Add the image file if it exists
+      if (formData.itemImage) {
+        submitFormData.append('image', formData.itemImage);
+      }
+      
+      // Get the authentication token
+      const token = localStorage.getItem('authToken');
+      
+      // Make API call
+      const response = await axios.post(
+        'http://localhost:8085/garbage/add',
+        submitFormData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'Authorization': token ? `Bearer ${token}` : '',
+          }
+        }
+      );
+      
+      console.log('API Response:', response.data);
+      
+      // Set success state
+      setSubmitSuccess(true);
+      
+      // Show success message
+      alert(`Request submitted successfully! You've earned ${rewardPoints} points.`);
+      
+      // Reset form
+      handleReset();
+      
+      // Optionally navigate to a confirmation page or back to services
+      setTimeout(() => {
+        navigate('/services');
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Error submitting request:', error);
+      
+      // Handle errors based on response
+      if (axios.isAxiosError(error)) {
+        const errorMessage = error.response?.data?.message || 'Failed to submit your request. Please try again.';
+        setSubmitError(errorMessage);
+      } else {
+        setSubmitError('An unexpected error occurred. Please try again later.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
+
     <div className="min-h-screen relative font-inter bg-gradient-to-br from-[#B4F9AE] via-[#6BCF7F] to-[#88D982] overflow-x-hidden">
       {/* Background decorative elements - hidden on mobile for better performance */}
       <div className="hidden lg:block">
-        {/* Background image */}
-        <img
-          src="https://api.builder.io/api/v1/image/assets/TEMP/2d5be248aadc64639ebfa10eb425e323ae9c90a4?width=824"
-          alt=""
-          className="absolute -left-[26px] top-[189px] w-[412px] h-[407px] rounded-[36px] opacity-90"
-        />
-        
         {/* Decorative circles */}
         <div className="absolute left-[72px] top-[110px] w-24 h-20 bg-white rounded-full opacity-10"></div>
         <div className="absolute right-[192px] top-[140px] w-36 h-30 bg-white rounded-full opacity-[0.08]"></div>
         <div className="absolute left-[49px] bottom-[120px] w-[95px] h-[81px] bg-white rounded-full opacity-[0.06]"></div>
       </div>
 
+    <Header />
+
       {/* Request Form Container */}
-      <div className="relative container mx-auto px-4 py-12 lg:py-20 z-10">
+      <div className="relative container mx-auto px-4 py-12 lg:py-20 z-10" style={{marginTop:'30px'}}>
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8 lg:mb-12">
@@ -201,6 +269,30 @@ const ClientRequest: React.FC = () => {
           
           {/* Card Container */}
           <div className="bg-white rounded-3xl shadow-lg p-6 sm:p-8 lg:p-10">
+            {/* Show error message if there was a submission error */}
+            {submitError && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 mr-2 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  <span>{submitError}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Show success message if submission was successful */}
+            {submitSuccess && (
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>Request submitted successfully! Redirecting...</span>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* First row - Title and Location */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -364,23 +456,37 @@ const ClientRequest: React.FC = () => {
                 />
               </div>
 
-              {/* Buttons */}
+              {/* Buttons - Updated to show loading state */}
               <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center sm:justify-end pt-4">
                 <button
                   type="button"
                   onClick={handleReset}
                   className="w-full sm:w-36 h-12 sm:h-14 bg-gray-200 rounded-2xl sm:rounded-3xl text-gray-700 text-base sm:text-lg font-bold hover:bg-gray-300 transition-all transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-4 focus:ring-gray-200"
+                  disabled={isSubmitting}
                 >
                   Reset
                 </button>
                 <button
                   type="submit"
                   className="w-full sm:w-54 h-12 sm:h-14 bg-gradient-to-r from-[#4CAF50] to-[#2E7D32] rounded-2xl sm:rounded-3xl text-white text-base sm:text-lg font-bold flex items-center justify-center gap-2 sm:gap-3 hover:from-[#43A047] hover:to-[#1B5E20] transition-all transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-4 focus:ring-[#4CAF50]/30"
+                  disabled={isSubmitting}
                 >
-                  Send Request
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M4 10H16M16 10L11 5M16 10L11 15" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+                  {isSubmitting ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      Send Request
+                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M4 10H16M16 10L11 5M16 10L11 15" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </>
+                  )}
                 </button>
               </div>
             </form>

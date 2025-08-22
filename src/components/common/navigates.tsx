@@ -8,7 +8,7 @@ import Footer from "./Footer";
 import Header from "./Header";
 import ClientRequest from "../Clientinterface/Services/ClientRequest";
 
-function navigate() {
+function navigate(p0: string) {
   const [showWelcome, setShowWelcome] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [unauthorized, setUnauthorized] = useState(false);

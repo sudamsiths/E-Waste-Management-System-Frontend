@@ -1,16 +1,14 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom"; // Import useNavigate hook
 import Header from "../../common/Header";
 import Footer from "../../common/Footer";
 import Clientinterface03 from "../Clientinterface03";
 import Clientinterface04 from "../Clientinterface04";
 
 const ClientService: React.FC = () => {
+  const navigate = useNavigate(); // Get the navigate function from the hook
   const [showRequestForm, setShowRequestForm] = useState(false);
 
-  // Function to handle request button click
-  const handleRequestClick = () => {
-    setShowRequestForm(true);
-  };
 
   // Function to handle form submission
   const handleSubmit = (e: React.FormEvent) => {
@@ -131,7 +129,7 @@ const ClientService: React.FC = () => {
                 </div>
 
                 <button
-                  onClick={handleRequestClick}
+                onClick={() => navigate("/ClientRequest")}
                   className="px-8 py-4 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-green-300"
                 >
                   Send a Request

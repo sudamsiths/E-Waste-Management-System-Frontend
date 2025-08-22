@@ -6,7 +6,7 @@ import Login from "./components/login/Login.tsx";
 import Header from "./components/common/Header.tsx";
 import Clientinterface01 from "./components/Clientinterface/Clientinterface01.tsx";
 import ClientInterface02 from "./components/Clientinterface/ClientInterface02.tsx";
-import Navigates from "./components/common/navigates.tsx";
+import Navigates from "./components/common/Navigates.tsx";
 import Clientinterface03 from "./components/Clientinterface/Clientinterface03.tsx";
 import Footer from "./components/common/Footer.tsx";
 import AdminDashboard from "./components/Admininterface/AdminDashboard.tsx";
