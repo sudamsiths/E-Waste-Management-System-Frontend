@@ -160,7 +160,6 @@ function navigate() {
           <Clientinterface04 />
         </div>
       </div>
-      <ClientRequest/>
       <Footer />
     </div>
   );
