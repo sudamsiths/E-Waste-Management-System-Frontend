@@ -1,0 +1,262 @@
+/* Admin Dashboard Specific Styles */
+
+/* Sidebar */
+.sidebar-wrapper {
+  width: 21%;
+  max-width: 280px;
+  min-width: 250px;
+  transition: transform 0.3s ease-in-out;
+}
+
+.nav-item {
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.2s;
+}
+
+.nav-item.active {
+  background-color: rgba(15, 23, 42, 1);
+  color: white;
+}
+
+.nav-item:not(.active):hover {
+  background-color: rgba(30, 41, 59, 0.7);
+}
+
+.nav-indicator {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: #3b82f6;
+}
+
+/* Hamburger Menu */
+.hamburger {
+  width: 24px;
+  height: 18px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.hamburger span {
+  display: block;
+  height: 2px;
+  width: 100%;
+  border-radius: 1px;
+  transition: all 0.3s ease;
+  transform-origin: center;
+}
+
+.hamburger.active span:nth-child(1) {
+  transform: rotate(45deg) translate(5px, 5px);
+}
+
+.hamburger.active span:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0);
+}
+
+.hamburger.active span:nth-child(3) {
+  transform: rotate(-45deg) translate(5px, -5px);
+}
+
+/* Table and Card animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+tbody tr {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Logout button styles */
+button.flex.items-center.gap-3.py-3.px-6.bg-red-600 {
+  position: relative;
+  overflow: hidden;
+}
+
+button.flex.items-center.gap-3.py-3.px-6.bg-red-600:active {
+  transform: translateY(1px);
+}
+
+button.flex.items-center.gap-3.py-3.px-6.bg-red-600:focus {
+  outline: 2px solid rgba(255, 255, 255, 0.5);
+  outline-offset: -2px;
+}
+
+/* Ripple effect for logout button */
+button.flex.items-center.gap-3.py-3.px-6.bg-red-600::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.5);
+  opacity: 0;
+  border-radius: 100%;
+  transform: scale(1, 1) translate(-50%, -50%);
+  transform-origin: 50% 50%;
+}
+
+button.flex.items-center.gap-3.py-3.px-6.bg-red-600:focus:not(:active)::after {
+  animation: ripple 1s ease-out;
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(0, 0);
+    opacity: 0.5;
+  }
+  20% {
+    transform: scale(25, 25);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(50, 50);
+    opacity: 0;
+  }
+}
+
+/* Profile dropdown styling */
+.admin-profile-section button {
+  position: relative;
+  transition: background-color 0.2s;
+}
+
+.admin-profile-section button:focus {
+  outline: none;
+}
+
+.admin-profile-section button:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.5);
+  outline-offset: -2px;
+}
+
+/* Dropdown animations */
+@keyframes fadeInDropdown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.admin-profile-section button + div {
+  animation: fadeInDropdown 0.2s ease-out forwards;
+}
+
+/* Better touch targets for profile menu */
+@media (hover: none) and (pointer: coarse) {
+  .admin-profile-section button {
+    min-height: 48px;
+  }
+  
+  .admin-profile-section button + div a,
+  .admin-profile-section button + div button {
+    min-height: 44px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .admin-profile-section button + div {
+    animation: none;
+  }
+
+  svg.transform {
+    transition: none;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-wrapper, .hamburger span, tbody tr {
+    transition: none;
+    animation: none;
+  }
+  
+  button.flex.items-center.gap-3.py-3.px-6.bg-red-600:focus:not(:active)::after {
+    animation: none;
+  }
+  
+  button.flex.items-center.gap-3.py-3.px-6.bg-red-600:active {
+    transform: none;
+  }
+}
+
+/* High contrast support */
+@media (prefers-contrast: high) {
+  .nav-indicator {
+    width: 6px;
+  }
+  
+  .hamburger span {
+    height: 3px;
+  }
+  
+  table th, table td {
+    border: 1px solid #333;
+  }
+}
+
+/* Logout confirmation dialog animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 20px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.3s ease-out forwards;
+}
+
+/* Fix for animation-progress-bar that might be missing */
+@keyframes progress {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+.animate-progress-bar {
+  animation: progress 3s linear forwards;
+}
+
+/* Ensure focus styles work across browsers */
+button:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Fix for safari */
+@media not all and (min-resolution:.001dpcm) { 
+  @supports (-webkit-appearance:none) {
+    .animate-fade-in-up {
+      -webkit-animation: fadeInUp 0.3s ease-out forwards;
+    }
+  }
+}

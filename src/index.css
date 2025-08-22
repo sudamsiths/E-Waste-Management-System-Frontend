@@ -2317,6 +2317,20 @@
   }
 }
 
+/* Animation for unauthorized access progress bar */
+@keyframes progress {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+.animate-progress-bar {
+  animation: progress 3s linear forwards;
+}
+
 /* Better font rendering */
 body {
   -webkit-font-smoothing: antialiased;

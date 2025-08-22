@@ -22,6 +22,9 @@ const EcoTechNavbar = () => {
     localStorage.removeItem("userId");
     localStorage.removeItem("rememberMe");
     
+    // Set logout success message to display on login page
+    localStorage.setItem("logoutSuccess", "true");
+    
     // Navigate to login page
     navigate('/login');
   };

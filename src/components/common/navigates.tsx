@@ -1,19 +1,55 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import ClientInterface02 from "../Clientinterface/ClientInterface02";
 import ClientInterface01 from "../Clientinterface/Clientinterface01";
 import Clientinterface03 from "../Clientinterface/Clientinterface03";
 import Clientinterface04 from "../Clientinterface/Clientinterface04";
 import Footer from "./Footer";
 import Header from "./Header";
-import AdminDashboard from "../Admininterface/AdminDashboard";
 
 function navigate() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
+  const [unauthorized, setUnauthorized] = useState(false);
+  const navigate = useNavigate();
 
-  // Show welcome message when user first arrives
+  // Check authentication and role on component mount
   useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    const role = localStorage.getItem("userRole");
     const username = localStorage.getItem("username");
+
+    // Check if user is authenticated
+    if (!token) {
+      // Redirect to login if not authenticated
+      navigate("/login");
+      return;
+    }
+
+    // Strict role check for customer dashboard
+    if (role !== "CUSTOMER") {
+      // Show unauthorized message and redirect after delay
+      setUnauthorized(true);
+
+      // Store the unauthorized attempt reason
+      localStorage.setItem(
+        "authError",
+        "You don't have permission to access the Customer Dashboard. Redirecting to appropriate dashboard..."
+      );
+
+      setTimeout(() => {
+        // Redirect admin users to admin dashboard
+        if (role === "ADMIN") {
+          navigate("/AdminDashboard");
+        } else {
+          // If role is undefined or something else, go to login
+          navigate("/login");
+        }
+      }, 3000);
+      return;
+    }
+
+    // Set username for welcome message
     setUsername(username);
 
     // Check if user just logged in
@@ -32,12 +68,49 @@ function navigate() {
 
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [navigate]);
 
   // Close welcome message
   const handleCloseWelcome = () => {
     setShowWelcome(false);
   };
+
+  // Show unauthorized message if needed
+  if (unauthorized) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-gray-100">
+        <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-lg">
+          <div className="flex items-center justify-center text-red-600 mb-6">
+            <svg
+              className="h-16 w-16"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+          </div>
+          <h1 className="text-center text-2xl font-bold text-gray-800 mb-2">
+            Unauthorized Access
+          </h1>
+          <p className="text-center text-gray-600 mb-6">
+            You don't have permission to access the Customer Dashboard.
+            Redirecting you to the Admin Dashboard.
+          </p>
+          <div className="flex justify-center">
+            <div className="inline-block h-2 w-32 rounded-full bg-gray-200 overflow-hidden">
+              <div className="h-full bg-red-500 animate-progress-bar"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen overflow-hidden">

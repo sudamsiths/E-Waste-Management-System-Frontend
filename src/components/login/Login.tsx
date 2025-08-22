@@ -32,6 +32,7 @@ const Login: React.FC = () => {
   const [registeredUsername, setRegisteredUsername] = useState<string | null>(null);
   const [loginSuccess, setLoginSuccess] = useState<boolean>(false);
   const [loginAnimation, setLoginAnimation] = useState<boolean>(false);
+  const [logoutSuccess, setLogoutSuccess] = useState<boolean>(false);
 
   useEffect(() => {
     // Check for existing success information - registration and login
@@ -70,6 +71,20 @@ const Login: React.FC = () => {
       setTimeout(() => {
         setLoginSuccess(false);
         localStorage.removeItem("loginSuccess");
+      }, 5000);
+    }
+    
+    // Check for logout success message
+    const logoutSuccessFlag = localStorage.getItem("logoutSuccess");
+    if (logoutSuccessFlag === "true") {
+      setLogoutSuccess(true);
+      
+      // Immediately remove the flag to prevent it from showing on refresh
+      localStorage.removeItem("logoutSuccess");
+      
+      // Clear the logout success state after showing message
+      setTimeout(() => {
+        setLogoutSuccess(false);
       }, 5000);
     }
     
@@ -154,27 +169,32 @@ const Login: React.FC = () => {
 
       console.log("Login successful:", response.data);
 
-    
       let token: string;
       let userRole: string;
       let userName: string;
       let userId: string;
 
       if (typeof response.data === 'string') {
-      
         token = response.data;
         userRole = userType.toUpperCase();
         userName = username;
         userId = '';
       } else {
-      
         token = response.data.token || '';
         userRole = response.data.role || userType.toUpperCase();
         userName = response.data.username || username;
         userId = response.data.userId || '';
       }
 
+      // Check if selected role matches the backend role
+      if (userType.toUpperCase() !== userRole) {
+        setLoginError(`Role mismatch: You've selected "${userType}" but your account is registered as "${userRole.toLowerCase()}". Please select the correct role and try again.`);
+        setIsSubmitting(false);
+        return;
+      }
+
       if (token) {
+        // Store auth data in localStorage
         localStorage.setItem("authToken", token);
         localStorage.setItem("userRole", userRole);
         localStorage.setItem("username", userName);
@@ -195,8 +215,14 @@ const Login: React.FC = () => {
         
         // Add a slight delay before navigation to show the success message
         setTimeout(() => {
-          console.log("Navigating to /Clientinterface");
-          navigate("/Navigate");
+          // Role-based navigation
+          if (userRole === "ADMIN") {
+            console.log("Admin role detected, navigating to AdminDashboard");
+            navigate("/AdminDashboard");
+          } else {
+            console.log("Customer role detected, navigating to client dashboard");
+            navigate("/Navigate"); // Navigate to client dashboard
+          }
         }, 800);
       } else {
         throw new Error("No token received from server");
@@ -212,6 +238,9 @@ const Login: React.FC = () => {
           setLoginError("Invalid credentials. Please check your username and password.");
         } else if (statusCode === 403) {
           setLoginError("Access denied. You don't have permission to access this resource.");
+        } else if (statusCode === 400 && errorMessage.includes("role")) {
+          // Handle role mismatch specifically
+          setLoginError(`Role mismatch: ${errorMessage}. Please select the correct role.`);
         } else {
           setLoginError(errorMessage);
         }
@@ -276,6 +305,7 @@ const Login: React.FC = () => {
 
       <div className={`login-section`}>
         <div className={`login-card `}>
+          {/* Registration success alert */}
           {registrationSuccess && (
             <div className="success-alert mb-4 p-3 bg-green-100 border border-green-300 text-green-800 rounded-lg flex items-center animate-bounce-in">
               <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -285,12 +315,23 @@ const Login: React.FC = () => {
             </div>
           )}
           
+          {/* Login success alert */}
           {loginSuccess && (
             <div className="success-alert mb-4 p-3 bg-blue-100 border border-blue-300 text-blue-800 rounded-lg flex items-center animate-bounce-in">
               <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
               <span>Login successful! Redirecting to dashboard...</span>
+            </div>
+          )}
+          
+          {/* Logout success alert */}
+          {logoutSuccess && (
+            <div className="success-alert mb-4 p-3 bg-blue-100 border border-blue-300 text-blue-800 rounded-lg flex items-center animate-bounce-in">
+              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <span>You've been successfully logged out.</span>
             </div>
           )}
 
