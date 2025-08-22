@@ -19,13 +19,13 @@ const EcoTechNavbar = () => {
       setActiveItem('Home');
     } else if (location.pathname === '/services') {
       setActiveItem('Services');
+    } else if (location.pathname === '/ClientRequest') {
+      setActiveItem('');  // No navigation item is active when on request page
     }
   }, [location.pathname]);
 
   const handleLogout = () => {
-    // Clear all authentication data from localStorage
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("userRole");
+    // Clear all authentication data
     localStorage.removeItem("username");
     localStorage.removeItem("userId");
     localStorage.removeItem("rememberMe");

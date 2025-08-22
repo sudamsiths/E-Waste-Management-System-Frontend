@@ -11,6 +11,7 @@ import Clientinterface03 from "./components/Clientinterface/Clientinterface03.ts
 import Footer from "./components/common/Footer.tsx";
 import AdminDashboard from "./components/Admininterface/AdminDashboard.tsx";
 import ClientService from "./components/Clientinterface/Services/ClientService.tsx";
+import ClientRequest from "./components/Clientinterface/Services/ClientRequest.tsx";
 
 const root = document.getElementById("root") || document.createElement("div");
 
@@ -28,6 +29,7 @@ ReactDOM.createRoot(root).render(
       <Route path="/Footer" element={<Footer />} />
       <Route path="/AdminDashboard" element={<AdminDashboard />} />
       <Route path="/services" element={<ClientService />} />
+      <Route path="/ClientRequest" element={<ClientRequest />} />
     </Routes>
   </BrowserRouter>
 );
