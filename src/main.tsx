@@ -1,7 +1,6 @@
 import ReactDOM from "react-dom/client";
 import './index.css';
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import App from './App.tsx';
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Register from "./components/login/Register.tsx";
 import Login from "./components/login/Login.tsx";
 import Header from "./components/common/Header.tsx";
@@ -11,6 +10,7 @@ import Navigates from "./components/common/navigates.tsx";
 import Clientinterface03 from "./components/Clientinterface/Clientinterface03.tsx";
 import Footer from "./components/common/Footer.tsx";
 import AdminDashboard from "./components/Admininterface/AdminDashboard.tsx";
+import ClientService from "./components/Clientinterface/Services/ClientService.tsx";
 
 const root = document.getElementById("root") || document.createElement("div");
 
@@ -27,6 +27,7 @@ ReactDOM.createRoot(root).render(
       <Route path="/Navigate" element={<Navigates />} />
       <Route path="/Footer" element={<Footer />} />
       <Route path="/AdminDashboard" element={<AdminDashboard />} />
+      <Route path="/services" element={<ClientService />} />
     </Routes>
   </BrowserRouter>
 );
