@@ -6,12 +6,13 @@ import Login from "./components/login/Login.tsx";
 import Header from "./components/common/Header.tsx";
 import Clientinterface01 from "./components/Clientinterface/Clientinterface01.tsx";
 import ClientInterface02 from "./components/Clientinterface/ClientInterface02.tsx";
-import Navigates from "./components/common/Navigates.tsx";
+import Navigates from "./components/common/Navigates";
 import Clientinterface03 from "./components/Clientinterface/Clientinterface03.tsx";
 import Footer from "./components/common/Footer.tsx";
 import AdminDashboard from "./components/Admininterface/AdminDashboard.tsx";
 import ClientService from "./components/Clientinterface/Services/ClientService.tsx";
 import ClientRequest from "./components/Clientinterface/Services/ClientRequest.tsx";
+import Contact from "./components/Clientinterface/Contact.tsx";
 
 const root = document.getElementById("root") || document.createElement("div");
 
@@ -30,6 +31,7 @@ ReactDOM.createRoot(root).render(
       <Route path="/AdminDashboard" element={<AdminDashboard />} />
       <Route path="/services" element={<ClientService />} />
       <Route path="/ClientRequest" element={<ClientRequest />} />
+      <Route path="/contact" element={<Contact />} />
     </Routes>
   </BrowserRouter>
 );

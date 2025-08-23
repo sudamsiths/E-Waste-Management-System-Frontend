@@ -221,9 +221,13 @@ const Login: React.FC = () => {
 
       console.log("Attempting login with data:", { ...loginData, password: "***" });
 
-      const response = await axios.post<string | LoginResponse>(
+      const response = await axios.post<LoginResponse | string>(
         "http://localhost:8081/users/login",
-        loginData
+        JSON.stringify(loginData),
+        {
+          headers: { "Content-Type": "application/json" },
+          timeout: 10000, // 10s
+        }
       );
 
       console.log("Login response received:", response.data);
@@ -295,7 +299,11 @@ const Login: React.FC = () => {
 
       if (axios.isAxiosError(error) && error.response) {
         const statusCode = error.response.status;
-        const errorMessage = error.response.data?.message || "Login failed";
+        const serverData = error.response.data;
+        const errorMessage =
+          typeof serverData === "string"
+            ? serverData
+            : serverData?.message || (typeof serverData === "object" ? JSON.stringify(serverData) : "Login failed");
 
         console.log("Error response:", { statusCode, errorMessage });
 
@@ -319,6 +327,8 @@ const Login: React.FC = () => {
         } else {
           setLoginError(errorMessage);
         }
+      } else if ((error as Error).message?.includes("timeout")) {
+        setLoginError("Request timed out. The server may be busy — try again later.");
       } else {
         setLoginError("Network error. Please check your connection and try again.");
       }
