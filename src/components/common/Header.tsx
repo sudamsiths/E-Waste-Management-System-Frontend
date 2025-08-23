@@ -205,10 +205,10 @@ const EcoTechNavbar = () => {
                     <p className="text-xs text-gray-500">Signed in as</p>
                     <p className="text-sm font-semibold text-gray-800 truncate">{username}</p>
                   </div>
-                  <Link to="/profile" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200">
+                  <Link to="/settings" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200">
                     Your Profile
                   </Link>
-                  <Link to="/settings" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200">
+                  <Link to="/client/account-settings" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200">
                     Settings
                   </Link>
                   <Link to="/tickets" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200">
@@ -289,7 +289,7 @@ const EcoTechNavbar = () => {
                 <span className="text-xs text-gray-600">Search</span>
               </button>
               
-              <Link to="/profile" className="flex flex-col items-center p-3 hover:bg-gray-100 rounded-lg transition-colors min-w-[70px] min-h-[70px]">
+              <Link to="/client/account-settings" className="flex flex-col items-center p-3 hover:bg-gray-100 rounded-lg transition-colors min-w-[70px] min-h-[70px]">
                 {localStorage.getItem("userProfileImage") ? (
                   <img 
                     src={localStorage.getItem("userProfileImage") || ""} 

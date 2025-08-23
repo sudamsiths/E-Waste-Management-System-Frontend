@@ -12,6 +12,7 @@ import Footer from "./components/common/Footer.tsx";
 import AdminDashboard from "./components/Admininterface/AdminDashboard.tsx";
 import ClientService from "./components/Clientinterface/Services/ClientService.tsx";
 import ClientRequest from "./components/Clientinterface/Services/ClientRequest.tsx";
+import ClientAccountSetting from "./components/Clientinterface/Services/ClientAccountSetting.tsx";
 import Contact from "./components/Clientinterface/Contact.tsx";
 
 const root = document.getElementById("root") || document.createElement("div");
@@ -31,6 +32,7 @@ ReactDOM.createRoot(root).render(
       <Route path="/AdminDashboard" element={<AdminDashboard />} />
       <Route path="/services" element={<ClientService />} />
       <Route path="/ClientRequest" element={<ClientRequest />} />
+      <Route path="/settings" element={<ClientAccountSetting />} />
       <Route path="/contact" element={<Contact />} />
     </Routes>
   </BrowserRouter>
