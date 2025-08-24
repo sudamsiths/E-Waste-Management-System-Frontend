@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff, Settings, Home, User, Clock, FileText, Camera, Trash2, Bell } from 'lucide-react';
+import { Eye, EyeOff, Settings, Home, User, Clock, FileText, Camera, Trash2 } from 'lucide-react';
 import Header from '../../common/Header';
 
 interface FormData {
@@ -13,13 +13,13 @@ interface FormData {
 }
 
 interface UserData {
+  userId?: number;
   fullName: string;
   contactNo: string;
   username: string;
   email: string;
   address: string;
-  password?: string;
-  profileImage?: string;
+  role?: string;
 }
 
 function ClientAccountSetting() {
@@ -52,17 +52,18 @@ function ClientAccountSetting() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [loadingProfileData, setLoadingProfileData] = useState(true);
 
-  // Get logged-in user data from localStorage or context
+  // Get logged-in user data from localStorage
   useEffect(() => {
     const username = localStorage.getItem('username');
-    const userId = localStorage.getItem('userId');
     
     if (username) {
       setCurrentUsername(username);
       fetchUserData(username);
     } else {
       // Redirect to login if no user is logged in
-      window.location.href = '/login';
+      setMessage({ type: 'error', text: 'Please log in to access your profile' });
+      // In a real app, you would redirect to login page
+      // window.location.href = '/login';
     }
   }, []);
 
@@ -72,22 +73,22 @@ function ClientAccountSetting() {
       setLoadingProfileData(true);
       console.log("Fetching data for username:", username);
       
-      // Using the proper API endpoint for user profile
       const response = await fetch(`http://localhost:8081/users/${username}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          // Remove Authorization header if you don't have JWT authentication
-          // 'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
       
       console.log("API Response status:", response.status);
       
       if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('User not found');
+        }
         const errorText = await response.text();
-        throw new Error(`API error: ${response.status} ${response.statusText} - ${errorText}`);
+        throw new Error(`API error: ${response.status} - ${errorText}`);
       }
       
       const userData: UserData = await response.json();
@@ -106,6 +107,8 @@ function ClientAccountSetting() {
       console.log("Formatted user data:", formattedData);
       setFormData(formattedData);
       setOriginalData(formattedData);
+      setMessage({ type: '', text: '' }); // Clear any previous errors
+      
     } catch (error) {
       console.error('Error fetching user data:', error);
       setMessage({ 
@@ -187,28 +190,29 @@ function ClientAccountSetting() {
       setLoading(true);
       setMessage({ type: '', text: '' });
 
-      // Prepare data for API - match the backend DTO structure
-      const updateData = {
-        username: currentUsername, // Include current username
+      // Prepare data for API - only send fields that have values
+      const updateData: any = {
+        username: currentUsername, // Always include current username
         fullName: formData.fullName.trim(),
         contactNo: formData.contactNo.trim(),
         email: formData.email.trim(),
         address: formData.address.trim(),
-        // Only include password if it's provided
-        ...(formData.password && { password: formData.password })
       };
 
+      // Only include password if it's provided and not empty
+      if (formData.password && formData.password.trim()) {
+        updateData.password = formData.password;
+      }
+
       console.log("Updating user:", currentUsername);
-      console.log("Update data:", JSON.stringify(updateData));
+      console.log("Update data:", JSON.stringify(updateData, null, 2));
       
-      // Using the correct API endpoint for updating user profile
-      const response = await fetch(`http://localhost:8081/users/api/users/update`, {
+      // Use the simplified update endpoint
+      const response = await fetch(`http://localhost:8081/users/update`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          // Remove Authorization header if you don't have JWT authentication
-          // 'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(updateData),
       });
@@ -216,15 +220,15 @@ function ClientAccountSetting() {
       console.log("Update response status:", response.status);
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Update error response:", errorText);
-        throw new Error(`Update failed: ${response.status} ${response.statusText}. ${errorText}`);
+        const errorResponse = await response.json();
+        console.error("Update error response:", errorResponse);
+        throw new Error(errorResponse.message || `Update failed: ${response.status}`);
       }
 
       const updatedUser = await response.json();
       console.log("Update successful:", updatedUser);
       
-      // Update localStorage with new username if it was changed
+      // Update localStorage if username changed (though username is readonly in this form)
       if (updatedUser.username && updatedUser.username !== currentUsername) {
         localStorage.setItem('username', updatedUser.username);
         setCurrentUsername(updatedUser.username);
@@ -247,8 +251,6 @@ function ClientAccountSetting() {
       };
       setOriginalData(updatedFormData);
       
-      // Refresh user data with the updated username
-      fetchUserData(updatedUser.username || currentUsername);
     } catch (error) {
       console.error('Error updating profile:', error);
       setMessage({ 
@@ -278,7 +280,7 @@ function ClientAccountSetting() {
 
   const handleProfileClick = () => {
     setShowProfileMenu(!showProfileMenu);
-    // If user clicks on profile, make sure we have the latest data
+    // Refresh user data when profile is clicked
     if (!showProfileMenu && currentUsername) {
       fetchUserData(currentUsername);
     }
@@ -483,7 +485,7 @@ function ClientAccountSetting() {
                       <input
                         type="tel"
                         name="contactNo"
-                        value={formData.contactNo}
+                       value={formData.contactNo}
                         onChange={handleInputChange}
                         required
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
