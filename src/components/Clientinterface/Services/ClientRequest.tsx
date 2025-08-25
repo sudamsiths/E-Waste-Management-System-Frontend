@@ -3,36 +3,35 @@ import Header from '../../common/Header';
 import axios from 'axios'; // Import axios for API calls
 import { useNavigate } from 'react-router-dom'; // For navigation after submission
 
-// E-Waste category enum matching backend
-enum EWasteCategory {
-  IT_EQUIPMENT = 'IT_EQUIPMENT',
-  CONSUMER_ELECTRONICS = 'CONSUMER_ELECTRONICS',
-  LIGHTING = 'LIGHTING',
-  TOOLS = 'TOOLS',
-  TOYS = 'TOYS',
-  MEDICAL_DEVICES = 'MEDICAL_DEVICES',
-  MONITORING_INSTRUMENTS = 'MONITORING_INSTRUMENTS',
-  BATTERIES = 'BATTERIES',
-  SOLAR_PANELS = 'SOLAR_PANELS',
-  OTHER = 'OTHER'
-}
-
+// E-Waste category union type and constant values matching backend
+export const EWasteCategoryValues = [
+  'IT_EQUIPMENT',
+  'CONSUMER_ELECTRONICS',
+  'LIGHTING',
+  'TOOLS',
+  'TOYS',
+  'MEDICAL_DEVICES',
+  'MONITORING_INSTRUMENTS',
+  'BATTERIES',
+  'SOLAR_PANELS',
+  'OTHER'
+] as const;
+export type EWasteCategory = typeof EWasteCategoryValues[number];
 // Category display names and base points
 const categoryInfo: Record<EWasteCategory, { name: string, basePoints: number, icon: string }> = {
-  [EWasteCategory.IT_EQUIPMENT]: { name: '💻 IT Equipment', basePoints: 10, icon: '💻' },
-  [EWasteCategory.CONSUMER_ELECTRONICS]: { name: '📱 Consumer Electronics', basePoints: 8, icon: '📱' },
-  [EWasteCategory.LIGHTING]: { name: '💡 Lighting', basePoints: 12, icon: '💡' },
-  [EWasteCategory.TOOLS]: { name: '🔧 Tools', basePoints: 15, icon: '🔧' },
-  [EWasteCategory.TOYS]: { name: '🎮 Toys', basePoints: 7, icon: '🎮' },
-  [EWasteCategory.MEDICAL_DEVICES]: { name: '⚕️ Medical Devices', basePoints: 9, icon: '⚕️' },
-  [EWasteCategory.MONITORING_INSTRUMENTS]: { name: '🔍 Monitoring Instruments', basePoints: 9, icon: '🔍' },
-  [EWasteCategory.BATTERIES]: { name: '🔋 Batteries', basePoints: 8, icon: '🔋' },
-  [EWasteCategory.SOLAR_PANELS]: { name: '☀️ Solar Panels', basePoints: 8, icon: '☀️' },
-  [EWasteCategory.OTHER]: { name: '📦 Other', basePoints: 5, icon: '📦' }
+  IT_EQUIPMENT: { name: '💻 IT Equipment', basePoints: 10, icon: '💻' },
+  CONSUMER_ELECTRONICS: { name: '📱 Consumer Electronics', basePoints: 8, icon: '📱' },
+  LIGHTING: { name: '💡 Lighting', basePoints: 12, icon: '💡' },
+  TOOLS: { name: '🔧 Tools', basePoints: 15, icon: '🔧' },
+  TOYS: { name: '🎮 Toys', basePoints: 7, icon: '🎮' },
+  MEDICAL_DEVICES: { name: '⚕️ Medical Devices', basePoints: 9, icon: '⚕️' },
+  MONITORING_INSTRUMENTS: { name: '🔍 Monitoring Instruments', basePoints: 9, icon: '🔍' },
+  BATTERIES: { name: '🔋 Batteries', basePoints: 8, icon: '🔋' },
+  SOLAR_PANELS: { name: '☀️ Solar Panels', basePoints: 8, icon: '☀️' },
+  OTHER: { name: '📦 Other', basePoints: 5, icon: '📦' }
 };
-
-// Convert enum to array for dropdown
-const categories = Object.values(EWasteCategory);
+// Use constant array for dropdown
+const categories = EWasteCategoryValues;
 
 interface FormData {
   itemTitle: string;
@@ -184,7 +183,9 @@ const ClientRequest: React.FC = () => {
       submitFormData.append('category', formData.category);
       submitFormData.append('weight', formData.estimatedWeight);
       submitFormData.append('description', formData.description);
-      submitFormData.append('rewardPoints', rewardPoints.toString());
+      
+      // Fix: Change field name from 'rewardPoints' to 'points' to match backend entity
+      submitFormData.append('points', rewardPoints.toString());
       
       // Add user identification from localStorage
       const userId = localStorage.getItem('userId');
