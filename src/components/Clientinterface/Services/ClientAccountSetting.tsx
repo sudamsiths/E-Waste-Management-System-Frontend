@@ -306,9 +306,9 @@ function ClientAccountSetting() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50" style={{ fontFamily: 'Inter, sans-serif' }}>
       <Header />
-      <div className="flex flex-col md:flex-row">
+      <div className="flex flex-col md:flex-row" style={{ paddingTop: '70px', margin: '0 20px' }}>
         {/* Sidebar */}
         <div className="w-full md:w-64 bg-white border-r border-gray-200 md:min-h-screen">
           <div className="p-4 md:p-6">
