@@ -166,7 +166,7 @@ const Register: React.FC = () => {
       // Prepare user data with the properly formatted phone number
       const userData = {
         fullName: formData.fullName,
-        contactNumber: phoneNumber, // Phone number in format 0722151182
+        contactNo: phoneNumber, // Changed from contactNumber to contactNo to match backend entity field name
         username: formData.username,
         email: formData.email,
         address: formData.address,
@@ -175,7 +175,7 @@ const Register: React.FC = () => {
       };
 
       console.log('Sending registration data:', userData);
-      console.log('Contact number type:', typeof userData.contactNumber);
+      console.log('Contact number type:', typeof userData.contactNo);
       
       // Make sure the API request doesn't convert the data
       const response = await axios.post('http://localhost:8081/users/register', userData, {

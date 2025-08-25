@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './AdminDashboard.css';
+import ManageUserProfile from './ManageUserProfile';  // Add this import
 
 // Define TypeScript interfaces for data structures
 interface StatData {
@@ -459,7 +460,7 @@ const AdminDashboard: React.FC = () => {
               
               <div className="px-6 py-4">
                 <p className="text-xs uppercase text-slate-400 font-medium mb-2">Management</p>
-                
+
                 <div className={`nav-item ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
                   <div className="flex items-center gap-3 py-3 px-0">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -861,10 +862,7 @@ const AdminDashboard: React.FC = () => {
 
           {/* Other tabs would go here */}
           {activeTab === 'users' && (
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-bold text-gray-800 mb-4">User Management</h2>
-              <p className="text-gray-500">User management content will appear here</p>
-            </div>
+            <ManageUserProfile />
           )}
           
           {activeTab === 'pickups' && (

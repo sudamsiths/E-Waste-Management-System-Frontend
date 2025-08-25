@@ -3,7 +3,7 @@ import Header from '../../common/Header';
 import axios from 'axios'; // Import axios for API calls
 import { useNavigate } from 'react-router-dom'; // For navigation after submission
 
-// E-Waste category union type and constant values matching backend
+// E-Waste category union type matching backend
 export const EWasteCategoryValues = [
   'IT_EQUIPMENT',
   'CONSUMER_ELECTRONICS',
@@ -16,7 +16,7 @@ export const EWasteCategoryValues = [
   'SOLAR_PANELS',
   'OTHER'
 ] as const;
-export type EWasteCategory = typeof EWasteCategoryValues[number];
+type EWasteCategory = typeof EWasteCategoryValues[number];
 // Category display names and base points
 const categoryInfo: Record<EWasteCategory, { name: string, basePoints: number, icon: string }> = {
   IT_EQUIPMENT: { name: '💻 IT Equipment', basePoints: 10, icon: '💻' },
@@ -30,7 +30,7 @@ const categoryInfo: Record<EWasteCategory, { name: string, basePoints: number, i
   SOLAR_PANELS: { name: '☀️ Solar Panels', basePoints: 8, icon: '☀️' },
   OTHER: { name: '📦 Other', basePoints: 5, icon: '📦' }
 };
-// Use constant array for dropdown
+// Use the union array for dropdown
 const categories = EWasteCategoryValues;
 
 interface FormData {
@@ -183,9 +183,10 @@ const ClientRequest: React.FC = () => {
       submitFormData.append('category', formData.category);
       submitFormData.append('weight', formData.estimatedWeight);
       submitFormData.append('description', formData.description);
-      
-      // Fix: Change field name from 'rewardPoints' to 'points' to match backend entity
       submitFormData.append('points', rewardPoints.toString());
+      
+      // Add default status as "PENDING"
+      submitFormData.append('status', 'PENDING');
       
       // Add user identification from localStorage
       const userId = localStorage.getItem('userId');

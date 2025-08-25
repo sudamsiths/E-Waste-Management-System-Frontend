@@ -14,6 +14,7 @@ import ClientService from "./components/Clientinterface/Services/ClientService.t
 import ClientRequest from "./components/Clientinterface/Services/ClientRequest.tsx";
 import ClientAccountSetting from "./components/Clientinterface/Services/ClientAccountSetting.tsx";
 import Contact from "./components/Clientinterface/Contact.tsx";
+import ManageUserProfile from "./components/Admininterface/ManageUserProfile.tsx";
 
 const root = document.getElementById("root") || document.createElement("div");
 
@@ -34,6 +35,7 @@ ReactDOM.createRoot(root).render(
       <Route path="/ClientRequest" element={<ClientRequest />} />
       <Route path="/settings" element={<ClientAccountSetting />} />
       <Route path="/contact" element={<Contact />} />
+      <Route path="/manage-user-profile" element={<ManageUserProfile />} />
     </Routes>
   </BrowserRouter>
 );
