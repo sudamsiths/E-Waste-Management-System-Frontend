@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Search, Download, Plus, MoreHorizontal, ArrowUpDown, RefreshCcw, AlertCircle } from 'lucide-react';
+import { ChevronDown, Search, Download, Plus, MoreHorizontal, ArrowUpDown, RefreshCcw, AlertCircle, Trash, Check, X, Edit } from 'lucide-react';
 import axios from 'axios';
 
 // Define Role type to match backend
@@ -50,9 +50,15 @@ const ManageUserProfile: React.FC = () => {
 
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   const roleDropdownRef = useRef<HTMLDivElement>(null);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
+  const deleteModalRef = useRef<HTMLDivElement>(null);
+
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Fetch users from backend API
   const fetchUsers = async () => {
@@ -96,6 +102,9 @@ const ManageUserProfile: React.FC = () => {
       }
       if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
         setShowStatusDropdown(false);
+      }
+      if (deleteModalRef.current && !deleteModalRef.current.contains(event.target as Node) && !isDeleting) {
+        setDeleteModalOpen(false);
       }
     };
 
@@ -196,6 +205,57 @@ const ManageUserProfile: React.FC = () => {
   useEffect(() => {
     setSelectAll(selectedUsers.size > 0 && selectedUsers.size === filteredUsers.length);
   }, [selectedUsers, filteredUsers]);
+
+  // Handle click outside for delete modal
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (deleteModalRef.current && !deleteModalRef.current.contains(event.target as Node) && !isDeleting) {
+        setDeleteModalOpen(false);
+      }
+    };
+
+    if (deleteModalOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [deleteModalOpen, isDeleting]);
+
+  // Function to initiate user deletion
+  const openDeleteModal = (user: User) => {
+    setUserToDelete(user);
+    setDeleteModalOpen(true);
+    setDeleteError(null);
+  };
+
+  // Function to delete user
+  const deleteUser = async () => {
+    if (!userToDelete) return;
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      // Call the delete endpoint with the username
+      await axios.delete(`http://localhost:8081/users/delete/${userToDelete.username}`);
+      
+      // Remove the user from the local state
+      setUsers(prevUsers => prevUsers.filter(user => user.username !== userToDelete.username));
+      
+      // Remove from selected users if present
+      if (selectedUsers.has(userToDelete.userId)) {
+        const newSelected = new Set(selectedUsers);
+        newSelected.delete(userToDelete.userId);
+        setSelectedUsers(newSelected);
+      }
+      
+      setDeleteModalOpen(false);
+    } catch (err) {
+      console.error('Failed to delete user:', err);
+      setDeleteError(err instanceof Error ? err.message : 'Failed to delete user. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6 lg:p-8">
@@ -521,9 +581,21 @@ const ManageUserProfile: React.FC = () => {
                           </td>
                           
                           <td className="px-4 md:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <button className="p-1 rounded-full hover:bg-gray-100 transition-colors">
-                              <MoreHorizontal className="w-4 h-4 text-gray-500" />
-                            </button>
+                            <div className="flex items-center gap-2 justify-end">
+                              <button 
+                                className="p-1 rounded-full hover:bg-blue-100 transition-colors"
+                                title="Edit user"
+                              >
+                                <Edit className="w-4 h-4 text-blue-600" />
+                              </button>
+                              <button 
+                                className="p-1 rounded-full hover:bg-red-100 transition-colors"
+                                title="Delete user"
+                                onClick={() => openDeleteModal(user)}
+                              >
+                                <Trash className="w-4 h-4 text-red-600" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -628,6 +700,63 @@ const ManageUserProfile: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModalOpen && userToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div 
+            ref={deleteModalRef}
+            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 animate-fade-in-up"
+          >
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
+                <Trash className="h-8 w-8 text-red-600" />
+              </div>
+              
+              <h3 className="text-xl font-medium text-gray-900 mb-2">Delete User</h3>
+              <p className="text-gray-500 mb-6">
+                Are you sure you want to delete the user <span className="font-medium text-gray-700">{userToDelete.username}</span>?
+                This action cannot be undone.
+              </p>
+              
+              {deleteError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+                  {deleteError}
+                </div>
+              )}
+              
+              <div className="flex gap-3 justify-end">
+                <button
+                  type="button"
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md transition-colors disabled:opacity-50"
+                  onClick={() => setDeleteModalOpen(false)}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors flex items-center justify-center gap-2 min-w-[100px] disabled:opacity-50"
+                  onClick={deleteUser}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash className="h-4 w-4" />
+                      <span>Delete</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
