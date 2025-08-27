@@ -4,6 +4,8 @@ import './AdminDashboard.css';
 import ManageUserProfile from './ManageUserProfile';
 import ManageAgentProfile from './ManageAgentProfile';
 import AddAgent from './AddAgent';
+import ClientAccountSetting from '../Clientinterface/CustomerAccountSettings';
+import CustomerAccountSettings from '../Clientinterface/CustomerAccountSettings';
 
 // Define AdminDashboard props interface
 interface AdminDashboardProps {
@@ -991,11 +993,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
           )}
           
           {activeTab === 'settings' && (
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-bold text-gray-800 mb-4">Settings</h2>
-              <p className="text-gray-500">Settings content will appear here</p>
-            </div>
+            <>
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h2 className="text-lg font-bold text-gray-800 mb-4">Settings</h2>
+                <p className="text-gray-500">Settings content will appear here</p>
+              </div>
+            </>
           )}
+          <CustomerAccountSettings />
         </main>
       </div>
 
