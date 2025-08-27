@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import './AdminDashboard.css';
 import ManageUserProfile from './ManageUserProfile';
 import ManageAgentProfile from './ManageAgentProfile';
 import AddAgent from './AddAgent';
-import ClientAccountSetting from '../Clientinterface/CustomerAccountSettings';
 import CustomerAccountSettings from '../Clientinterface/CustomerAccountSettings';
+import { RefreshCcw } from 'lucide-react';
 
 // Define AdminDashboard props interface
 interface AdminDashboardProps {
@@ -68,13 +68,38 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  
+  // New state variables for pickup requests
+  const [pickupRequests, setPickupRequests] = useState<RequestData[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(false);
+  const [requestsError, setRequestsError] = useState<string | null>(null);
+  const [currentRequestPage, setCurrentRequestPage] = useState(1);
+  const [requestsPerPage] = useState(5);
+  
+  // Add state for dynamic statistics
+  const [statsData, setStatsData] = useState<StatData[]>([
+    { title: 'Total Requests', value: '0', change: '+0%', positive: true },
+    { title: 'Recycled Material', value: '0 tons', change: '+0%', positive: true },
+    { title: 'Carbon Saved', value: '0 kg', change: '+0%', positive: true },
+    { title: 'Pending Pickups', value: '0', change: '0%', positive: false }
+  ]);
+  const [statsLoading, setStatsLoading] = useState(false);
+  
+  // Calculate total pages and paginated requests
+  const totalRequestPages = useMemo(() => Math.ceil(pickupRequests.length / requestsPerPage), [pickupRequests, requestsPerPage]);
+  const paginatedRequests = useMemo(() => {
+    const startIndex = (currentRequestPage - 1) * requestsPerPage;
+    const endIndex = startIndex + requestsPerPage;
+    return pickupRequests.slice(startIndex, endIndex);
+  }, [pickupRequests, currentRequestPage, requestsPerPage]);
+
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const logoutConfirmRef = useRef<HTMLDivElement>(null);
   const deleteModalRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   // Sample data for statistics
-  const statsData: StatData[] = [
+  const statsDataSample: StatData[] = [
     { title: 'Total Requests', value: '2,547', change: '+12.5%', positive: true },
     { title: 'Recycled Material', value: '18.3 tons', change: '+7.2%', positive: true },
     { title: 'Carbon Saved', value: '342 kg', change: '+5.1%', positive: true },
@@ -193,10 +218,130 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
     }
   };
 
+  // Fetch pickup requests from backend API - updated to use the "latest" endpoint
+  const fetchPickupRequests = async () => {
+    try {
+      setRequestsLoading(true);
+      setRequestsError(null);
+      
+      // Use the specific endpoint for latest garbage items
+      const response = await fetch('http://localhost:8085/garbage/latest', {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status} - ${response.statusText}`);
+      }
+      
+      // Parse response
+      const data = await response.json();
+      console.log("Latest garbage items:", data);
+      
+      // Format data for display - ensure we get an array even if structure varies
+      const itemsArray = Array.isArray(data) ? data : 
+                       (data.content ? data.content : 
+                       (data.items ? data.items : 
+                       (data.data ? data.data : [])));
+                       
+      // Take only the 5 most recent items if there are more
+      const latestItems = itemsArray.slice(0, 5);
+      
+      // Map to RequestData format for display
+      const mappedRequests: RequestData[] = latestItems.map((item: any) => ({
+        id: String(item.id || ''),
+        user: item.userName || item.createdBy || 'Unknown',
+        location: item.location || 'Not specified',
+        items: item.title || item.description || 'Unknown item',
+        status: item.status ? 
+          (String(item.status).toLowerCase().includes('complete') ? 'completed' : 
+          (String(item.status).toLowerCase().includes('progress') ? 'in-progress' : 'pending')) : 'pending',
+        weight: `${item.weight || 0} kg`,
+        category: item.category || 'MISC'
+      }));
+      
+      setPickupRequests(mappedRequests);
+      
+    } catch (err) {
+      console.error('Failed to fetch latest garbage items:', err);
+      setRequestsError(err instanceof Error ? err.message : 'Failed to fetch latest garbage items');
+    } finally {
+      setRequestsLoading(false);
+    }
+  };
+
+  // Fetch dashboard statistics from backend
+  const fetchDashboardStats = async () => {
+    try {
+      setStatsLoading(true);
+      
+      // Fetch total requests count
+      const requestsPromise = fetch('http://localhost:8085/garbage/GetCount/Garbages')
+        .then(res => res.ok ? res.json() : 0)
+        .catch(() => 0);
+      
+      // Fetch carbon saved (garbage kg)
+      const carbonPromise = fetch('http://localhost:8085/garbage/GetCount/GarbagesKG')
+        .then(res => res.ok ? res.json() : 0)
+        .catch(() => 0);
+        
+      // Wait for both requests to complete
+      const [requestsCount, carbonKg] = await Promise.all([requestsPromise, carbonPromise]);
+      
+      // Format the values for display
+      const formattedRequests = Number(requestsCount).toLocaleString();
+      const formattedCarbon = Number(carbonKg).toLocaleString();
+      
+      // Calculate recycled material estimate (just an example - adjust the formula as needed)
+      const recycledTons = (Number(carbonKg) / 10).toFixed(1);
+      
+      // Update the stats data with fetched values
+      setStatsData(prevStats => {
+        const newStats = [...prevStats];
+        
+        // Update Total Requests
+        newStats[0] = {
+          ...newStats[0],
+          value: formattedRequests
+        };
+        
+        // Update Recycled Material (example calculation)
+        newStats[1] = {
+          ...newStats[1],
+          value: `${recycledTons} tons`
+        };
+        
+        // Update Carbon Saved
+        newStats[2] = {
+          ...newStats[2],
+          value: `${formattedCarbon} kg`
+        };
+        
+        return newStats;
+      });
+      
+    } catch (error) {
+      console.error('Error fetching dashboard statistics:', error);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
   // Fetch garbage data on component mount or when activeTab changes to 'garbage'
   useEffect(() => {
     if (activeTab === 'garbage') {
       fetchGarbageData();
+    }
+  }, [activeTab]);
+
+  // Fetch pickup requests when dashboard tab is active
+  useEffect(() => {
+    if (activeTab === 'dashboard') {
+      fetchPickupRequests();
+      fetchDashboardStats();
     }
   }, [activeTab]);
 
@@ -453,6 +598,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
     );
   }
 
+  // add derived summary for Recent Pickup Requests subtitle
+  const recentSummary = useMemo(() => {
+	if (requestsLoading) return 'Loading latest items from server...';
+	if (requestsError) return requestsError;
+	if (!pickupRequests.length) return 'No recent garbage items found.';
+	// show count and up to 3 item titles for brevity
+	const titles = pickupRequests.map(r => r.items).slice(0, 3).join(', ');
+	return `Showing ${pickupRequests.length} latest item(s): ${titles}${pickupRequests.length > 3 ? ', …' : ''}`;
+}, [requestsLoading, requestsError, pickupRequests]);
+
   return (
     <div className="admin-dashboard bg-gray-100 min-h-screen flex flex-col">
       {/* Mobile Header */}
@@ -492,7 +647,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                       </svg>
                       <span>Logout</span>
                     </button>
-                  </div>
+                    </div>
                 )}
               </div>
               
@@ -724,12 +879,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                           <p className="text-sm font-semibold text-gray-800">Admin User</p>
                           <p className="text-xs text-gray-500">admin@ewaste.com</p>
                         </div>
-                        <a href="#profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        <Link to="/customer-account-settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                           Your Profile
-                        </a>
-                        <a href="#settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        </Link>
+                        <Link to="#settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                           Settings
-                        </a>
+                        </Link>
                         <hr className="my-1" />
                         <button
                           onClick={initiateLogout} // Changed to trigger logout confirmation
@@ -740,9 +895,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                         </svg>
                         <span>Logout</span>
                       </button>
+                        </div>
+                      )}
                     </div>
-                    )}
-                  </div>
                 )}
               </div>
             </div>
@@ -761,7 +916,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                         {stat.change}
                       </span>
                     </div>
-                    <p className="text-2xl lg:text-3xl font-bold text-gray-800">{stat.value}</p>
+                    <p className="text-2xl lg:text-3xl font-bold text-gray-800">
+                      {statsLoading ? (
+                        <span className="inline-block w-16 h-8 bg-gray-200 rounded animate-pulse"></span>
+                      ) : (
+                        stat.value
+                      )}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -786,16 +947,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
               
               {/* Recent Pickup Requests Table */}
               <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                {/* Recent Pickup Requests Table Header */}
                 <div className="p-4 lg:p-6 border-b border-gray-200">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
                       <h2 className="text-lg font-bold text-gray-800">Recent Pickup Requests</h2>
-                      <p className="text-sm text-gray-500">Latest e-waste pickup requests from users</p>
+                      <p className="text-sm text-gray-500">Latest 5 garbage items from database</p>
                     </div>
                     
                     <div className="flex items-center gap-2">
-                      <button className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 text-sm font-medium hover:bg-gray-50">
-                        Schedule
+                      <button 
+                        onClick={fetchPickupRequests}
+                        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 text-sm font-medium hover:bg-gray-50 flex items-center gap-2"
+                        disabled={requestsLoading}
+                      >
+                        <RefreshCcw className={`w-4 h-4 ${requestsLoading ? 'animate-spin' : ''}`} />
+                        <span>Refresh</span>
                       </button>
                       <button className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">
                         New Request
@@ -804,28 +971,91 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                   </div>
                 </div>
                 
-                {/* Desktop Table */}
-                <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Request ID</th>
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight</th>
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {recentRequests.map((request) => (
-                        <tr key={request.id} className="hover:bg-gray-50">
-                          <td className="py-4 px-4 whitespace-nowrap text-sm font-medium text-gray-900">{request.id}</td>
-                          <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.user}</td>
-                          <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.location}</td>
-                          <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.items}</td>
-                          <td className="py-4 px-4 whitespace-nowrap text-sm">
+                {/* Loading State */}
+                {requestsLoading && (
+                  <div className="flex justify-center items-center p-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
+                  </div>
+                )}
+                
+                {/* Error State */}
+                {requestsError && !requestsLoading && (
+                  <div className="p-6">
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+                      <p className="font-medium">Error Loading Pickup Requests</p>
+                      <p className="text-sm">{requestsError}</p>
+                      <button 
+                        onClick={fetchPickupRequests}
+                        className="mt-2 px-3 py-1 bg-red-100 text-red-800 text-sm font-medium rounded hover:bg-red-200"
+                      >
+                        Try Again
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Empty State */}
+                {!requestsLoading && !requestsError && pickupRequests.length === 0 && (
+                  <div className="text-center py-12">
+                    <div className="mx-auto h-12 w-12 text-gray-400">
+                      <svg className="h-full w-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2m-8 0a2 2 0 110-4 2 2 0 010 4zm0 0a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2H9z"></path>
+                      </svg>
+                    </div>
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">No pickup requests</h3>
+                    <p className="mt-1 text-sm text-gray-500">No pickup requests have been made yet.</p>
+                  </div>
+                )}
+                
+                {/* Data Table */}
+                {!requestsLoading && !requestsError && pickupRequests.length > 0 && (
+                  <>
+                    {/* Desktop Table */}
+                    <div className="hidden md:block overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Request ID</th>
+                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
+                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight</th>
+                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {paginatedRequests.map((request) => (
+                            <tr key={request.id} className="hover:bg-gray-50">
+                              <td className="py-4 px-4 whitespace-nowrap text-sm font-medium text-gray-900">{request.id}</td>
+                              <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.user}</td>
+                              <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.location}</td>
+                              <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.items}</td>
+                              <td className="py-4 px-4 whitespace-nowrap text-sm">
+                                <span 
+                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                    ${request.status === 'completed' ? 'bg-green-100 text-green-800' : 
+                                      request.status === 'in-progress' ? 'bg-blue-100 text-blue-800' : 
+                                        'bg-yellow-100 text-yellow-800'}`}
+                              >
+                                {request.status === 'completed' ? 'Completed' : 
+                                  request.status === 'in-progress' ? 'In Progress' : 'Pending'}
+                              </span>
+                              </td>
+                              <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.weight}</td>
+                              <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.category}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    
+                    {/* Mobile Cards */}
+                    <div className="md:hidden">
+                      {paginatedRequests.map((request) => (
+                        <div key={request.id} className="border-b border-gray-200 p-4">
+                          <div className="flex justify-between items-start mb-2">
+                            <span className="font-medium text-gray-900">{request.id}</span>
                             <span 
                               className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
                                 ${request.status === 'completed' ? 'bg-green-100 text-green-800' : 
@@ -835,95 +1065,115 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                               {request.status === 'completed' ? 'Completed' : 
                                 request.status === 'in-progress' ? 'In Progress' : 'Pending'}
                             </span>
-                          </td>
-                          <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.weight}</td>
-                          <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.category}</td>
-                        </tr>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div className="text-gray-500">User:</div>
+                            <div className="text-right">{request.user}</div>
+                            
+                            <div className="text-gray-500">Location:</div>
+                            <div className="text-right">{request.location}</div>
+                            
+                            <div className="text-gray-500">Items:</div>
+                            <div className="text-right">{request.items}</div>
+                            
+                            <div className="text-gray-500">Weight:</div>
+                            <div className="text-right">{request.weight}</div>
+                            
+                            <div className="text-gray-500">Category:</div>
+                            <div className="text-right">{request.category}</div>
+                          </div>
+                        </div>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-                
-                {/* Mobile Cards */}
-                <div className="md:hidden">
-                  {recentRequests.map((request) => (
-                    <div key={request.id} className="border-b border-gray-200 p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="font-medium text-gray-900">{request.id}</span>
-                        <span 
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                            ${request.status === 'completed' ? 'bg-green-100 text-green-800' : 
-                              request.status === 'in-progress' ? 'bg-blue-100 text-blue-800' : 
-                                'bg-yellow-100 text-yellow-800'}`}
-                        >
-                          {request.status === 'completed' ? 'Completed' : 
-                            request.status === 'in-progress' ? 'In Progress' : 'Pending'}
-                        </span>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div className="text-gray-500">User:</div>
-                        <div className="text-right">{request.user}</div>
-                        
-                        <div className="text-gray-500">Location:</div>
-                        <div className="text-right">{request.location}</div>
-                        
-                        <div className="text-gray-500">Items:</div>
-                        <div className="text-right">{request.items}</div>
-                        
-                        <div className="text-gray-500">Weight:</div>
-                        <div className="text-right">{request.weight}</div>
-                        
-                        <div className="text-gray-500">Category:</div>
-                        <div className="text-right">{request.category}</div>
-                      </div>
                     </div>
-                  ))}
-                </div>
+                  </>
+                )}
                 
                 {/* Pagination */}
-                <div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-                  <div className="flex-1 flex justify-between sm:hidden">
-                    <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                      Previous
-                    </button>
-                    <button className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                      Next
-                    </button>
-                  </div>
-                  <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm text-gray-700">
-                        Showing <span className="font-medium">1</span> to <span className="font-medium">5</span> of <span className="font-medium">327</span> results
-                      </p>
+                {!requestsLoading && !requestsError && pickupRequests.length > 0 && (
+                  <div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                    <div className="flex-1 flex justify-between sm:hidden">
+                      <button
+                        onClick={() => setCurrentRequestPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentRequestPage === 1}
+                        className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        Previous
+                      </button>
+                      <button
+                        onClick={() => setCurrentRequestPage(prev => Math.min(totalRequestPages, prev + 1))}
+                        disabled={currentRequestPage === totalRequestPages}
+                        className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        Next
+                      </button>
                     </div>
-                    <div>
-                      <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                        <button className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                          <span className="sr-only">Previous</span>
-                          <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                            <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </button>
-                        <button className="relative inline-flex items-center px-4 py-2 border border-green-500 bg-green-50 text-sm font-medium text-green-600 hover:bg-green-100">
-                          1
-                        </button>
-                        <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                          2
-                        </button>
-                        <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                          3
-                        </button>
-                        <button className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                          <span className="sr-only">Next</span>
-                          <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </button>
-                      </nav>
+                    <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm text-gray-700">
+                          Showing <span className="font-medium">{((currentRequestPage - 1) * requestsPerPage) + 1}</span> to{' '}
+                          <span className="font-medium">{Math.min(currentRequestPage * requestsPerPage, pickupRequests.length)}</span> of{' '}
+                          <span className="font-medium">{pickupRequests.length}</span> results
+                        </p>
+                      </div>
+                      <div>
+                        <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                          <button
+                            onClick={() => setCurrentRequestPage(1)}
+                            disabled={currentRequestPage === 1}
+                            className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                          >
+                            <span className="sr-only">First</span>
+                            <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                              <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                          
+                          {/* Page numbers */}
+                          {Array.from({ length: Math.min(5, totalRequestPages) }, (_, i) => {
+                            let pageNumber: number;
+                            
+                            // Calculate which page numbers to show
+                            if (totalRequestPages <= 5) {
+                              pageNumber = i + 1;
+                            } else if (currentRequestPage <= 3) {
+                              pageNumber = i + 1;
+                            } else if (currentRequestPage >= totalRequestPages - 2) {
+                              pageNumber = totalRequestPages - 4 + i;
+                            } else {
+                              pageNumber = currentRequestPage - 2 + i;
+                            }
+                            
+                            return (
+                              <button
+                                key={pageNumber}
+                                onClick={() => setCurrentRequestPage(pageNumber)}
+                                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                                  currentRequestPage === pageNumber
+                                    ? 'z-10 bg-green-50 border-green-500 text-green-600'
+                                    : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                                }`}
+                              >
+                                {pageNumber}
+                              </button>
+                            );
+                          })}
+                          
+                          <button
+                            onClick={() => setCurrentRequestPage(totalRequestPages)}
+                            disabled={currentRequestPage === totalRequestPages}
+                            className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                          >
+                            <span className="sr-only">Last</span>
+                            <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                              <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        </nav>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             </>
           )}
@@ -993,14 +1243,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
           )}
           
           {activeTab === 'settings' && (
-            <>
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-lg font-bold text-gray-800 mb-4">Settings</h2>
-                <p className="text-gray-500">Settings content will appear here</p>
-              </div>
-            </>
+            <CustomerAccountSettings />
           )}
-          <CustomerAccountSettings />
         </main>
       </div>
 
@@ -1061,8 +1305,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                 </p>
               </div>
             )}
-          </div>
         </div>
+      </div>
       )}
 
       {/* Delete confirmation modal */}
@@ -1076,47 +1320,46 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
           <div 
             ref={deleteModalRef}
             className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 transform transition-all animate-fade-in-up"
-            tabIndex={-1}
           >
             {!isDeleting ? (
-              <>
-                <div className="text-center mb-5">
-                  <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
-                    <svg className="h-10 w-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <>
+                  <div className="text-center mb-5">
+                    <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
+                      <svg className="h-10 w-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
+                    </div>
+                    <h3 id="delete-dialog-title" className="text-lg font-medium text-gray-900 mb-2">Delete Item</h3>
+                    <p className="text-sm text-gray-500">
+                      Are you sure you want to delete "<span className="font-semibold">{itemToDelete.title}</span>"?
+                      This action cannot be undone.
+                    </p>
                   </div>
-                  <h3 id="delete-dialog-title" className="text-lg font-medium text-gray-900 mb-2">Delete Item</h3>
-                  <p className="text-sm text-gray-500">
-                    Are you sure you want to delete "<span className="font-semibold">{itemToDelete.title}</span>"?
-                    This action cannot be undone.
-                  </p>
-                </div>
-                
-                {deleteError && (
-                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                    {deleteError}
+                  
+                  {deleteError && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                      {deleteError}
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={cancelDelete}
+                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400"
+                      disabled={isDeleting}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={confirmDelete}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                      disabled={isDeleting}
+                      autoFocus
+                    >
+                      Delete Item
+                    </button>
                   </div>
-                )}
-                
-                <div className="flex justify-end gap-3">
-                  <button
-                    onClick={cancelDelete}
-                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400"
-                    disabled={isDeleting}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={confirmDelete}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                    disabled={isDeleting}
-                    autoFocus
-                  >
-                    Delete Item
-                  </button>
-                </div>
-              </>
+                </>
             ) : (
               <div className="text-center py-6">
                 <div className="mx-auto flex items-center justify-center h-16 w-16 mb-4" aria-hidden="true">
@@ -1146,6 +1389,5 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
   );
 };
 
-// Removed defaultProps assignment as it's not needed with default parameter
-
 export default AdminDashboard;
+   
