@@ -1,7 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import './AdminDashboard.css';
-import ManageUserProfile from './ManageUserProfile';  // Add this import
+import ManageUserProfile from './ManageUserProfile';
+import ManageAgentProfile from './ManageAgentProfile';
+import AddAgent from './AddAgent';
+
+// Define AdminDashboard props interface
+interface AdminDashboardProps {
+  initialTab?: string;
+}
 
 // Define TypeScript interfaces for data structures
 interface StatData {
@@ -44,10 +51,10 @@ interface GarbageItem {
   description: string;
 }
 
-const AdminDashboard: React.FC = () => {
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard' }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [unauthorized, setUnauthorized] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -55,8 +62,13 @@ const AdminDashboard: React.FC = () => {
   const [garbageItems, setGarbageItems] = useState<GarbageItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<GarbageItem | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const logoutConfirmRef = useRef<HTMLDivElement>(null);
+  const deleteModalRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   // Sample data for statistics
@@ -186,6 +198,13 @@ const AdminDashboard: React.FC = () => {
     }
   }, [activeTab]);
 
+  // Update active tab when initialTab prop changes
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
   // Enhanced click outside handler for both dialogs
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -201,11 +220,19 @@ const AdminDashboard: React.FC = () => {
           setShowLogoutConfirm(false);
         }
       }
+
+      // Handle delete confirmation
+      if (showDeleteConfirm && deleteModalRef.current && !deleteModalRef.current.contains(event.target as Node)) {
+        // Only close if we're not in the deleting state
+        if (!isDeleting) {
+          setShowDeleteConfirm(false);
+        }
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showProfileDropdown, showLogoutConfirm, isLoggingOut]);
+  }, [showProfileDropdown, showLogoutConfirm, isLoggingOut, showDeleteConfirm, isDeleting]);
 
   // Add keyboard accessibility for modals
   useEffect(() => {
@@ -213,12 +240,13 @@ const AdminDashboard: React.FC = () => {
       if (e.key === 'Escape') {
         if (showProfileDropdown) setShowProfileDropdown(false);
         if (showLogoutConfirm && !isLoggingOut) setShowLogoutConfirm(false);
+        if (showDeleteConfirm && !isDeleting) setShowDeleteConfirm(false);
       }
     };
     
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
-  }, [showProfileDropdown, showLogoutConfirm, isLoggingOut]);
+  }, [showProfileDropdown, showLogoutConfirm, isLoggingOut, showDeleteConfirm, isDeleting]);
 
   // Close logout confirmation when clicking outside
   useEffect(() => {
@@ -236,6 +264,47 @@ const AdminDashboard: React.FC = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showLogoutConfirm]);
+
+  // Initiate deletion process
+  const handleDeleteClick = (item: GarbageItem) => {
+    setItemToDelete(item);
+    setShowDeleteConfirm(true);
+    setDeleteError(null);
+  };
+
+  // Cancel deletion
+  const cancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setItemToDelete(null);
+  };
+
+  // Confirm and execute deletion
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
+    
+    setIsDeleting(true);
+    setDeleteError(null);
+    
+    try {
+      const response = await fetch(`http://localhost:8085/garbage/delete/${itemToDelete.id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      
+      // Remove deleted item from state
+      setGarbageItems(prevItems => prevItems.filter(item => item.id !== itemToDelete.id));
+      setShowDeleteConfirm(false);
+      setItemToDelete(null);
+    } catch (err) {
+      console.error('Failed to delete item:', err);
+      setDeleteError(err instanceof Error ? err.message : 'Failed to delete item. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Render the garbage items table
   const renderGarbageTable = () => {
@@ -304,7 +373,12 @@ const AdminDashboard: React.FC = () => {
                   <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{item.points}</td>
                   <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700 flex gap-2">
                     <button className="px-3 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200">Edit</button>
-                    <button className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200">Delete</button>
+                    <button 
+                      onClick={() => handleDeleteClick(item)}
+                      className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200"
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -339,7 +413,12 @@ const AdminDashboard: React.FC = () => {
               
               <div className="mt-3 flex justify-end gap-2">
                 <button className="px-3 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 text-sm">Edit</button>
-                <button className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200 text-sm">Delete</button>
+                <button 
+                  onClick={() => handleDeleteClick(item)}
+                  className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200 text-sm"
+                >
+                  Delete
+                </button>
               </div>
             </div>
           ))}
@@ -469,6 +548,27 @@ const AdminDashboard: React.FC = () => {
                     <span>Users</span>
                   </div>
                   {activeTab === 'users' && <div className="nav-indicator"></div>}
+                </div>
+
+                <div className={`nav-item ${activeTab === 'agents' ? 'active' : ''}`} onClick={() => setActiveTab('agents')}>
+                  <div className="flex items-center gap-3 py-3 px-0">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                    <span>Agents</span>
+                  </div>
+                  {activeTab === 'agents' && <div className="nav-indicator"></div>}
+                </div>
+                
+                {/* New Add Agent Navigation Item */}
+                <div className={`nav-item ${activeTab === 'add-agent' ? 'active' : ''}`} onClick={() => setActiveTab('add-agent')}>
+                  <div className="flex items-center gap-3 py-3 px-0">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                    <span>Add Agent</span>
+                  </div>
+                  {activeTab === 'add-agent' && <div className="nav-indicator"></div>}
                 </div>
                 
                 <div className={`nav-item ${activeTab === 'pickups' ? 'active' : ''}`} onClick={() => setActiveTab('pickups')}>
@@ -848,7 +948,7 @@ const AdminDashboard: React.FC = () => {
                     </button>
                     <button className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium flex items-center gap-2">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                       </svg>
                       Add New Item
                     </button>
@@ -860,11 +960,22 @@ const AdminDashboard: React.FC = () => {
             </div>
           )}
 
-          {/* Other tabs would go here */}
+          {/* Users Tab Content */}
           {activeTab === 'users' && (
             <ManageUserProfile />
           )}
           
+          {/* Agents Tab Content */}
+          {activeTab === 'agents' && (
+            <ManageAgentProfile />
+          )}
+          
+          {/* Add Agent Tab Content */}
+          {activeTab === 'add-agent' && (
+            <AddAgent />
+          )}
+          
+          {/* Other tabs */}
           {activeTab === 'pickups' && (
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-lg font-bold text-gray-800 mb-4">Pickup Management</h2>
@@ -949,6 +1060,76 @@ const AdminDashboard: React.FC = () => {
         </div>
       )}
 
+      {/* Delete confirmation modal */}
+      {showDeleteConfirm && itemToDelete && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4"
+          aria-modal="true"
+          role="dialog"
+          aria-labelledby="delete-dialog-title"
+        >
+          <div 
+            ref={deleteModalRef}
+            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 transform transition-all animate-fade-in-up"
+            tabIndex={-1}
+          >
+            {!isDeleting ? (
+              <>
+                <div className="text-center mb-5">
+                  <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
+                    <svg className="h-10 w-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </div>
+                  <h3 id="delete-dialog-title" className="text-lg font-medium text-gray-900 mb-2">Delete Item</h3>
+                  <p className="text-sm text-gray-500">
+                    Are you sure you want to delete "<span className="font-semibold">{itemToDelete.title}</span>"?
+                    This action cannot be undone.
+                  </p>
+                </div>
+                
+                {deleteError && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                    {deleteError}
+                  </div>
+                )}
+                
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={cancelDelete}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400"
+                    disabled={isDeleting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDelete}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                    disabled={isDeleting}
+                    autoFocus
+                  >
+                    Delete Item
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-6">
+                <div className="mx-auto flex items-center justify-center h-16 w-16 mb-4" aria-hidden="true">
+                  <svg className="animate-spin h-10 w-10 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Deleting Item...</h3>
+                <p className="text-sm text-gray-500">
+                  Please wait while we process your request.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Mobile Overlay for Sidebar */}
       {isMobile && isMobileMenuOpen && (
         <div 
@@ -959,5 +1140,7 @@ const AdminDashboard: React.FC = () => {
     </div>
   );
 };
+
+// Removed defaultProps assignment as it's not needed with default parameter
 
 export default AdminDashboard;
