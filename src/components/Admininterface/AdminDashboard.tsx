@@ -6,6 +6,7 @@ import ManageAgentProfile from './ManageAgentProfile';
 import AddAgent from './AddAgent';
 import CustomerAccountSettings from '../Clientinterface/CustomerAccountSettings';
 import { RefreshCcw } from 'lucide-react';
+import Branches from './Branches';
 
 // Define AdminDashboard props interface
 interface AdminDashboardProps {
@@ -97,15 +98,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
   const logoutConfirmRef = useRef<HTMLDivElement>(null);
   const deleteModalRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-
-  // Sample data for statistics
-  const statsDataSample: StatData[] = [
-    { title: 'Total Requests', value: '2,547', change: '+12.5%', positive: true },
-    { title: 'Recycled Material', value: '18.3 tons', change: '+7.2%', positive: true },
-    { title: 'Carbon Saved', value: '342 kg', change: '+5.1%', positive: true },
-    { title: 'Pending Pickups', value: '24', change: '-3.6%', positive: false }
-  ];
-
 
 
   useEffect(() => {
@@ -281,17 +273,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
       const carbonPromise = fetch('http://localhost:8085/garbage/GetCount/GarbagesKG')
         .then(res => res.ok ? res.json() : 0)
         .catch(() => 0);
+
+      const PendingPickups= fetch('http://localhost:8085/garbage/GetCount/Pending')
+        .then(res => res.ok ? res.json() : 0)
+        .catch(() => 0);
         
       // Wait for both requests to complete
-      const [requestsCount, carbonKg] = await Promise.all([requestsPromise, carbonPromise]);
-      
+      const [requestsCount, carbonKg, pendingPickups] = await Promise.all([requestsPromise, carbonPromise, PendingPickups]);
+
       // Format the values for display
       const formattedRequests = Number(requestsCount).toLocaleString();
       const formattedCarbon = Number(carbonKg).toLocaleString();
-      
-      // Calculate recycled material estimate (just an example - adjust the formula as needed)
       const recycledTons = (Number(carbonKg) / 10).toFixed(1);
-      
+      const formattedPendingPickups = Number(pendingPickups).toLocaleString();
+
       // Update the stats data with fetched values
       setStatsData(prevStats => {
         const newStats = [...prevStats];
@@ -313,7 +308,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
           ...newStats[2],
           value: `${formattedCarbon} kg`
         };
-        
+        // Update Pending Pickups
+        newStats[3] = {
+          ...newStats[3],
+          value: formattedPendingPickups
+        };
+
         return newStats;
       });
       
@@ -841,15 +841,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                   {activeTab === 'agents' && <div className="nav-indicator"></div>}
                 </div>
                 
-                {/* New Add Agent Navigation Item */}
-                <div className={`nav-item ${activeTab === 'add-agent' ? 'active' : ''}`} onClick={() => setActiveTab('add-agent')}>
+                {/* Add new Branches Navigation Item */}
+                <div className={`nav-item ${activeTab === 'branches' ? 'active' : ''}`} onClick={() => setActiveTab('branches')}>
                   <div className="flex items-center gap-3 py-3 px-0">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
                     </svg>
-                    <span>Add Agent</span>
+                    <span>Branches</span>
                   </div>
-                  {activeTab === 'add-agent' && <div className="nav-indicator"></div>}
+                  {activeTab === 'branches' && <div className="nav-indicator"></div>}
                 </div>
                 
                 <div className={`nav-item ${activeTab === 'pickups' ? 'active' : ''}`} onClick={() => setActiveTab('pickups')}>
@@ -1317,6 +1317,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                             if (totalRequestPages <= 5) {
                               pageNumber = i + 1;
                             } else if (currentRequestPage <= 3) {
+
                               pageNumber = i + 1;
                             } else if (currentRequestPage >= totalRequestPages - 2) {
                               pageNumber = totalRequestPages - 4 + i;
@@ -1405,6 +1406,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
           {/* Add Agent Tab Content */}
           {activeTab === 'add-agent' && (
             <AddAgent />
+          )}
+          
+          {/* Branches Tab Content */}
+          {activeTab === 'branches' && (
+            <Branches />
           )}
           
           {/* Other tabs */}

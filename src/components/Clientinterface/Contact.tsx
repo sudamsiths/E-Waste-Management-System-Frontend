@@ -46,7 +46,7 @@ function Contact() {
   return (
     <>
       <Header />
-      <section className="bg-white dark:bg-green-700 min-h-screen " >
+      <section className="bg-white dark:bg-green-700 min-h-screen " style={{paddingTop: '4rem'}}>
         {/* ...existing code... */}
         
 
