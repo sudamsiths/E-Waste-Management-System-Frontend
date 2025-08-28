@@ -134,11 +134,14 @@ function UserInterface() {
     setFeedbackSubmitSuccess(false);
 
     try {
-      // Prepare payload - submittedAt will be handled by backend
+      // Prepare payload with proper date handling
+      const currentDate = new Date();
+      const submittedAtISO = currentDate.toISOString();
+      
       const payload = {
         customerName: feedbackData.customerName.trim(),
         feedbackType: feedbackData.feedbackType,
-        submittedAt: new Date().toISOString(),
+        submittedAt: submittedAtISO,
         message: feedbackData.message.trim()
       };
 

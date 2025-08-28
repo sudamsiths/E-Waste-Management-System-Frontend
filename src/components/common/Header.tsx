@@ -211,7 +211,7 @@ const EcoTechNavbar = () => {
                   <Link to="/client/account-settings" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200">
                     Settings
                   </Link>
-                  <Link to="/tickets" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200">
+                  <Link to="/client/all-requests" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200">
                     Your Tickets
                   </Link>
                   <hr className="my-1" />

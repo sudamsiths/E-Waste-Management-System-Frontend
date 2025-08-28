@@ -6,7 +6,7 @@ import Clientinterface03 from "../Clientinterface/Clientinterface03";
 import Clientinterface04 from "../Clientinterface/Clientinterface04";
 import Footer from "./Footer";
 import Header from "./Header";
-import ClientRequest from "../Clientinterface/Services/ClientRequest";
+import ClientRequest from "../Clientinterface/Services/ClientGarbageRequest";
 
 function navigate(p0: string) {
   const [showWelcome, setShowWelcome] = useState(false);

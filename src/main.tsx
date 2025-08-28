@@ -11,12 +11,14 @@ import Clientinterface03 from "./components/Clientinterface/Clientinterface03.ts
 import Footer from "./components/common/Footer.tsx";
 import AdminDashboard from "./components/Admininterface/AdminDashboard.tsx";
 import ClientService from "./components/Clientinterface/Services/ClientService.tsx";
-import ClientRequest from "./components/Clientinterface/Services/ClientRequest.tsx";
+import ClientRequest from "./components/Clientinterface/Services/ClientGarbageRequest.tsx";
 import ClientAccountSetting from "./components/Clientinterface/Services/ClientAccountSetting.tsx";
 import Contact from "./components/Clientinterface/Contact.tsx";
 import ManageUserProfile from "./components/Admininterface/ManageUserProfile.tsx";
 import AddAgent from "./components/Admininterface/AddAgent.tsx";
 import CustomerAccountSettings from "./components/Clientinterface/CustomerAccountSettings.tsx";
+import ClientAllRequest from './components/Clientinterface/Services/ClientAllRequest';
+
 
 const root = document.getElementById("root") || document.createElement("div");
 
@@ -40,6 +42,7 @@ ReactDOM.createRoot(root).render(
       <Route path="/manage-user-profile" element={<ManageUserProfile />} />
       <Route path="/add-agent" element={<AddAgent />} />
       <Route path="/customer-account-settings" element={<CustomerAccountSettings />} />
+      <Route path="/client/all-requests" element={<ClientAllRequest />} />
     </Routes>
   </BrowserRouter>
 );

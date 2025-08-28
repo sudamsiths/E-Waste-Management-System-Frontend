@@ -29,6 +29,7 @@ interface RequestData {
   status: 'completed' | 'in-progress' | 'pending' | 'APPROVED' | 'REJECTED';
   weight: string;
   category: string;
+  SubmissionDate: string;
 }
 
 // Define Category type to match backend (enum replaced with union type for erasableSyntaxOnly)
@@ -47,6 +48,7 @@ interface GarbageItem {
   id: number;
   title: string;
   category: Category;
+  SubmissionDate: string;
   image: string;
   points: number;
   location: string;
@@ -105,7 +107,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
   const toggleAddAgentForm = () => {
     setShowAddAgentForm(prev => !prev);
   };
-
 
   useEffect(() => {
     // Check if user is authenticated and has admin role
@@ -201,8 +202,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
         throw new Error(`Error: ${response.status} - ${response.statusText}`);
       }
       
-      const data: GarbageItem[] = await response.json();
-      setGarbageItems(data);
+      const data: any[] = await response.json();
+      
+      // Map the response data to match our interface
+      const mappedData: GarbageItem[] = data.map((item: any) => ({
+        id: item.id,
+        title: item.title || 'Unknown',
+        category: item.category || 'OTHER',
+        SubmissionDate: new Date(item.submissionDate || item.SubmissionDate).toLocaleDateString(),
+        image: item.image || '',
+        points: item.points || 0,
+        location: item.location || 'Not specified',
+        weight: item.weight || 0,
+        description: item.description || ''
+      }));
+      
+      setGarbageItems(mappedData);
     } catch (err) {
       console.error('Failed to fetch garbage data:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch garbage data');
@@ -253,7 +268,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
           (String(item.status).toLowerCase().includes('complete') ? 'completed' : 
           (String(item.status).toLowerCase().includes('progress') ? 'in-progress' : 'pending')) : 'pending',
         weight: `${item.weight || 0} kg`,
-        category: item.category || 'MISC'
+        category: item.category || 'MISC',
+        SubmissionDate: new Date(item.submissionDate || item.SubmissionDate).toLocaleDateString()
       }));
       
       setPickupRequests(mappedRequests);
@@ -575,59 +591,33 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
             <thead className="bg-gray-50">
               <tr>
                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Request ID</th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight</th>
                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Points</th>
+                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submission Date</th>
                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {paginatedRequests.map((request) => (
-                <tr key={request.id} className="hover:bg-gray-50">
-                  <td className="py-4 px-4 whitespace-nowrap text-sm font-medium text-gray-900">{request.id}</td>
-                  <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.user}</td>
-                  <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.location}</td>
-                  <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.items}</td>
-                  <td className="py-4 px-4 whitespace-nowrap text-sm">
-                    <span 
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                        ${request.status === 'completed' ? 'bg-green-100 text-green-800' : 
-                          request.status === 'in-progress' ? 'bg-blue-100 text-blue-800' : 
-                            'bg-yellow-100 text-yellow-800'}`}
-                  >
-                    {request.status === 'completed' ? 'Completed' : 
-                      request.status === 'in-progress' ? 'In Progress' : 'Pending'}
-                </span>
-                  </td>
-                  <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.weight}</td>
-                  <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.category}</td>
+              {garbageItems.map((item) => (
+                <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="py-4 px-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.id}</td>
+                  <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{item.title}</td>
+                  <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{item.location}</td>
+                  <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{item.weight} kg</td>
+                  <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{item.category}</td>
+                  <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{item.points}</td>
+                  <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{item.SubmissionDate}</td>
                   <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">
-                    <div className="relative">
-                      <select
-                        className="appearance-none bg-white border border-gray-300 rounded-md py-1 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                        onChange={(e) => handleStatusChange(request.id, e.target.value)}
-                        value=""
-                        disabled={statusUpdating[request.id]}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleDeleteClick(item)}
+                        className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700"
                       >
-                        <option value="" disabled>Change Status</option>
-                        {availableStatuses.map((status) => (
-                          <option key={status} value={status}>{status.replace('_', ' ')}</option>
-                        ))}
-                      </select>
-                      {statusUpdating[request.id] && (
-                        <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
-                          <svg className="animate-spin h-4 w-4 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                        </div>
-                      )}
-                      {statusUpdateError[request.id] && (
-                        <div className="text-xs text-red-600 mt-1">{statusUpdateError[request.id]}</div>
-                      )}
+                        Delete
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -638,65 +628,36 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
         
         {/* Mobile Cards */}
         <div className="md:hidden">
-          {paginatedRequests.map((request) => (
-            <div key={request.id} className="border-b border-gray-200 p-4">
+          {garbageItems.map((item) => (
+            <div key={item.id} className="border-b border-gray-200 p-4">
               <div className="flex justify-between items-start mb-2">
-                <span className="font-medium text-gray-900">{request.id}</span>
-                <span 
-                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                    ${request.status === 'completed' ? 'bg-green-100 text-green-800' : 
-                      request.status === 'in-progress' ? 'bg-blue-100 text-blue-800' : 
-                        'bg-yellow-100 text-yellow-800'}`}
+                <span className="font-medium text-gray-900">{item.id}</span>
+                <button
+                  onClick={() => handleDeleteClick(item)}
+                  className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700"
                 >
-                  {request.status === 'completed' ? 'Completed' : 
-                    request.status === 'in-progress' ? 'In Progress' : 'Pending'}
-                </span>
+                  Delete
+                </button>
               </div>
               
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className="text-gray-500">User:</div>
-                <div className="text-right">{request.user}</div>
+                <div className="text-gray-500">Title:</div>
+                <div className="text-right">{item.title}</div>
                 
                 <div className="text-gray-500">Location:</div>
-                <div className="text-right">{request.location}</div>
-                
-                <div className="text-gray-500">Items:</div>
-                <div className="text-right">{request.items}</div>
+                <div className="text-right">{item.location}</div>
                 
                 <div className="text-gray-500">Weight:</div>
-                <div className="text-right">{request.weight}</div>
+                <div className="text-right">{item.weight} kg</div>
                 
                 <div className="text-gray-500">Category:</div>
-                <div className="text-right">{request.category}</div>
+                <div className="text-right">{item.category}</div>
                 
-                {/* Add status change dropdown to mobile view */}
-                <div className="text-gray-500">Change Status:</div>
-                <div className="text-right">
-                  <div className="inline-block relative">
-                    <select
-                      className="appearance-none bg-white border border-gray-300 rounded-md py-1 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      onChange={(e) => handleStatusChange(request.id, e.target.value)}
-                      value=""
-                      disabled={statusUpdating[request.id]}
-                    >
-                      <option value="" disabled>Select</option>
-                      {availableStatuses.map((status) => (
-                        <option key={status} value={status}>{status.replace('_', ' ')}</option>
-                      ))}
-                    </select>
-                    {statusUpdating[request.id] && (
-                      <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
-                        <svg className="animate-spin h-4 w-4 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                  {statusUpdateError[request.id] && (
-                    <div className="text-xs text-red-600 mt-1">{statusUpdateError[request.id]}</div>
-                  )}
-                </div>
+                <div className="text-gray-500">Points:</div>
+                <div className="text-right">{item.points}</div>
+                
+                <div className="text-gray-500">Submission Date:</div>
+                <div className="text-right">{item.SubmissionDate}</div>
               </div>
             </div>
           ))}
@@ -731,13 +692,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
 
   // add derived summary for Recent Pickup Requests subtitle
   const recentSummary = useMemo(() => {
-	if (requestsLoading) return 'Loading latest items from server...';
-	if (requestsError) return requestsError;
-	if (!pickupRequests.length) return 'No recent garbage items found.';
-	// show count and up to 3 item titles for brevity
-	const titles = pickupRequests.map(r => r.items).slice(0, 3).join(', ');
-	return `Showing ${pickupRequests.length} latest item(s): ${titles}${pickupRequests.length > 3 ? ', …' : ''}`;
-}, [requestsLoading, requestsError, pickupRequests]);
+    if (requestsLoading) return 'Loading latest items from server...';
+    if (requestsError) return requestsError;
+    if (!pickupRequests.length) return 'No recent garbage items found.';
+    // show count and up to 3 item titles for brevity
+    const titles = pickupRequests.map(r => r.items).slice(0, 3).join(', ');
+    return `Showing ${pickupRequests.length} latest item(s): ${titles}${pickupRequests.length > 3 ? ', …' : ''}`;
+  }, [requestsLoading, requestsError, pickupRequests]);
 
   return (
     <div className="admin-dashboard bg-gray-100 min-h-screen flex flex-col">
@@ -770,7 +731,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                       <p className="text-xs text-gray-500">admin@ewaste.com</p>
                     </div>
                     <button
-                      onClick={initiateLogout} // Changed to trigger logout confirmation
+                      onClick={initiateLogout}
                       className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 flex items-center gap-2"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -943,7 +904,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                         <p className="text-xs text-gray-500">admin@ewaste.com</p>
                       </div>
                       <button
-                        onClick={initiateLogout} // Changed to trigger logout confirmation
+                        onClick={initiateLogout}
                         className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-gray-100 flex items-center gap-2"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -954,8 +915,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                     </div>
                   )}
                 </div>
-                
-                
               </div>
             </div>
           </div>
@@ -1028,7 +987,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                         </Link>
                         <hr className="my-1" />
                         <button
-                          onClick={initiateLogout} // Changed to trigger logout confirmation
+                          onClick={initiateLogout}
                           className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 flex items-center gap-2"
                         >
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1163,6 +1122,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight</th>
                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submission Date</th>
                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                           </tr>
                         </thead>
@@ -1186,6 +1146,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                               </td>
                               <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.weight}</td>
                               <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.category}</td>
+                              <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.SubmissionDate}</td>
                               <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">
                                 <div className="relative">
                                   <select
@@ -1250,6 +1211,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                             
                             <div className="text-gray-500">Category:</div>
                             <div className="text-right">{request.category}</div>
+
+                            <div className="text-gray-500">Submission Date:</div>
+                            <div className="text-right">{request.SubmissionDate}</div>
                             
                             {/* Add status change dropdown to mobile view */}
                             <div className="text-gray-500">Change Status:</div>
@@ -1334,7 +1298,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                             if (totalRequestPages <= 5) {
                               pageNumber = i + 1;
                             } else if (currentRequestPage <= 3) {
-
                               pageNumber = i + 1;
                             } else if (currentRequestPage >= totalRequestPages - 2) {
                               pageNumber = totalRequestPages - 4 + i;

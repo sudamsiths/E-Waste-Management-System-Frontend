@@ -37,6 +37,7 @@ interface FormData {
   itemTitle: string;
   pickupLocation: string;
   category: EWasteCategory | '';
+  submissionDate: Date ;
   estimatedWeight: string;
   itemImage: File | null;
   description: string;
@@ -48,6 +49,7 @@ const ClientRequest: React.FC = () => {
     itemTitle: '',
     pickupLocation: '',
     category: '',
+    submissionDate: new Date(),
     estimatedWeight: '',
     itemImage: null,
     description: ''
@@ -150,6 +152,7 @@ const ClientRequest: React.FC = () => {
       itemTitle: '',
       pickupLocation: '',
       category: '',
+      submissionDate: new Date(),
       estimatedWeight: '',
       itemImage: null,
       description: ''
@@ -181,6 +184,7 @@ const ClientRequest: React.FC = () => {
       submitFormData.append('title', formData.itemTitle);
       submitFormData.append('location', formData.pickupLocation);
       submitFormData.append('category', formData.category);
+      submitFormData.append('submissionDate', formData.submissionDate.toISOString());
       submitFormData.append('weight', formData.estimatedWeight);
       submitFormData.append('description', formData.description);
       submitFormData.append('points', rewardPoints.toString());
@@ -188,16 +192,52 @@ const ClientRequest: React.FC = () => {
       // Add default status as "PENDING"
       submitFormData.append('status', 'PENDING');
       
+      // Add submission date in multiple formats to ensure backend compatibility
+      const currentDate = new Date();
+      const submissionDate = currentDate.toISOString();
+      const submissionDateLocal = currentDate.toLocaleString();
+      
+      // Try multiple field names that backend might expect
+      submitFormData.append('submissionDate', submissionDate);
+      submitFormData.append('SubmissionDate', submissionDate); // Capital S
+      submitFormData.append('submission_date', submissionDate); // Snake case
+      submitFormData.append('dateSubmitted', submissionDate); // Alternative naming
+      submitFormData.append('createdAt', submissionDate); // Common field name
+      
       // Add user identification from localStorage
       const userId = localStorage.getItem('userId');
+      const userName = localStorage.getItem('username');
+      
       if (userId) {
         submitFormData.append('userId', userId);
+      }
+      
+      // Add userName to identify who sent the request
+      if (userName) {
+        submitFormData.append('userName', userName);
+        console.log('Adding userName to request:', userName);
+      } else {
+        setSubmitError('User not found. Please log in again.');
+        setIsSubmitting(false);
+        return;
       }
       
       // Add the image file if it exists
       if (formData.itemImage) {
         submitFormData.append('image', formData.itemImage);
       }
+      
+      // Log the form data being sent (for debugging)
+      console.log('Submitting garbage request with the following data:');
+      console.log('- Title:', formData.itemTitle);
+      console.log('- Location:', formData.pickupLocation);
+      console.log('- Category:', formData.category);
+      console.log('- Weight:', formData.estimatedWeight);
+      console.log('- Points:', rewardPoints);
+      console.log('- UserName:', userName);
+      console.log('- UserId:', userId);
+      console.log('- SubmissionDate (ISO):', submissionDate);
+      console.log('- SubmissionDate (Local):', submissionDateLocal);
       
       // Get the authentication token
       const token = localStorage.getItem('authToken');
@@ -219,8 +259,9 @@ const ClientRequest: React.FC = () => {
       // Set success state
       setSubmitSuccess(true);
       
-      // Show success message
-      alert(`Request submitted successfully! You've earned ${rewardPoints} points.`);
+      // Show success message with username and formatted submission date
+      const formattedDate = new Date(submissionDate).toLocaleString();
+      alert(`Request submitted successfully by ${userName} on ${formattedDate}! You've earned ${rewardPoints} points.`);
       
       // Reset form
       handleReset();
@@ -259,7 +300,7 @@ const ClientRequest: React.FC = () => {
     <Header />
 
       {/* Request Form Container */}
-      <div className="relative container mx-auto px-4 py-12 lg:py-20 z-10" style={{marginTop:'30px'}}>
+      <div className="relative container mx-auto px-4 py-12 lg:py-20 z-10" style={{paddingTop:'100px'}}>
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8 lg:mb-12">
@@ -505,5 +546,6 @@ const ClientRequest: React.FC = () => {
     </div>
   );
 };
+
 
 export default ClientRequest;
