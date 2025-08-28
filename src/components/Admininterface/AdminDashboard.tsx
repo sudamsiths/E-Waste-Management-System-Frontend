@@ -5,7 +5,7 @@ import ManageUserProfile from './ManageUserProfile';
 import ManageAgentProfile from './ManageAgentProfile';
 import AddAgent from './AddAgent';
 import CustomerAccountSettings from '../Clientinterface/CustomerAccountSettings';
-import { RefreshCcw } from 'lucide-react';
+import { RefreshCcw, X } from 'lucide-react';
 import Branches from './Branches';
 
 // Define AdminDashboard props interface
@@ -69,6 +69,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   // New state variables for pickup requests
   const [pickupRequests, setPickupRequests] = useState<RequestData[]>([]);
@@ -98,6 +99,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
   const logoutConfirmRef = useRef<HTMLDivElement>(null);
   const deleteModalRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const [showAddAgentForm, setShowAddAgentForm] = useState(false);
+  
+  // Function to toggle Add Agent form
+  const toggleAddAgentForm = () => {
+    setShowAddAgentForm(prev => !prev);
+  };
 
 
   useEffect(() => {
@@ -841,6 +848,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                   {activeTab === 'agents' && <div className="nav-indicator"></div>}
                 </div>
                 
+                {/* Add Agent Button in Sidebar */}
+                <div className={`nav-item`} onClick={toggleAddAgentForm}>
+                  <div className="flex items-center gap-3 py-3 px-0 cursor-pointer hover:bg-slate-700 rounded">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                    <span>Add Agent</span>
+                  </div>
+                </div>
+
                 {/* Add new Branches Navigation Item */}
                 <div className={`nav-item ${activeTab === 'branches' ? 'active' : ''}`} onClick={() => setActiveTab('branches')}>
                   <div className="flex items-center gap-3 py-3 px-0">
@@ -1400,7 +1417,39 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
           
           {/* Agents Tab Content */}
           {activeTab === 'agents' && (
-            <ManageAgentProfile />
+            <div className="bg-white rounded-lg shadow-sm">
+              {/* Agents Header with Add Agent Button */}
+              <div className="p-4 lg:p-6 border-b border-gray-200">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-800">Agent Management</h2>
+                    <p className="text-sm text-gray-500">Manage your agents and their assignments</p>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setRefreshTrigger(prev => prev + 1)}
+                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 text-sm font-medium hover:bg-gray-50 flex items-center gap-2"
+                    >
+                      <RefreshCcw className="w-4 h-4" />
+                      <span>Refresh</span>
+                    </button>
+                    <button 
+                      onClick={toggleAddAgentForm}
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                      </svg>
+                      <span>Add Agent</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Include ManageAgentProfile component */}
+              <ManageAgentProfile />
+            </div>
           )}
           
           {/* Add Agent Tab Content */}
@@ -1483,7 +1532,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                   <svg className="animate-spin h-10 w-10 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
+              </svg>
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Logging out...</h3>
                 <p className="text-sm text-gray-500">
@@ -1570,6 +1619,33 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
           className="fixed inset-0 bg-black bg-opacity-50 z-30"
           onClick={() => setIsMobileMenuOpen(false)}
         />
+      )}
+
+      {/* Add Agent Popup Modal */}
+      {showAddAgentForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white">
+              <h2 className="text-xl font-bold text-gray-800">Add New Agent</h2>
+              <button
+                onClick={toggleAddAgentForm}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                aria-label="Close modal"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            
+            {/* Modal Content */}
+            <div className="p-6">
+              <AddAgent onSuccess={() => {
+                setShowAddAgentForm(false);
+                setRefreshTrigger(prev => prev + 1);
+              }} />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
