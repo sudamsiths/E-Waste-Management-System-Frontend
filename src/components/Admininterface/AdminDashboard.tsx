@@ -25,7 +25,7 @@ interface RequestData {
   user: string;
   location: string;
   items: string;
-  status: 'completed' | 'in-progress' | 'pending';
+  status: 'completed' | 'in-progress' | 'pending' | 'APPROVED' | 'REJECTED';
   weight: string;
   category: string;
 }
@@ -106,13 +106,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
     { title: 'Pending Pickups', value: '24', change: '-3.6%', positive: false }
   ];
 
-  // Sample data for recent requests
-  const recentRequests: RequestData[] = [
-    { id: 'REQ001', user: 'John Doe', location: 'New York, NY', items: 'Laptop, Phone', status: 'completed', weight: '2.3 kg', category: 'IT EQUIPMENT' },
-    { id: 'REQ002', user: 'Jane Smith', location: 'Los Angeles, CA', items: 'Monitor', status: 'in-progress', weight: '5.1 kg', category: 'LIGHTING' },
-    { id: 'REQ003', user: 'Mike Johnson', location: 'Chicago, IL', items: 'Printer', status: 'pending', weight: '8.7 kg', category: 'TOOLS' },
-    { id: 'REQ004', user: 'Sarah Williams', location: 'Boston, MA', items: 'TV, Cables', status: 'completed', weight: '12.5 kg', category: 'APPLIANCES' }
-  ];
+
 
   useEffect(() => {
     // Check if user is authenticated and has admin role
@@ -453,6 +447,83 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
     }
   };
 
+  // Add new state for status updates
+  const [statusUpdating, setStatusUpdating] = useState<{[key: string]: boolean}>({});
+  const [statusUpdateError, setStatusUpdateError] = useState<{[key: string]: string}>({});
+
+  // Define available statuses for dropdown
+  const availableStatuses = [
+    'IN_PROGRESS',
+    'COMPLETED'
+  ];
+  
+  // New function to handle status updates with specific endpoints
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    // Set loading state for this specific item
+    setStatusUpdating(prev => ({...prev, [id]: true}));
+    setStatusUpdateError(prev => ({...prev, [id]: ''}));
+    
+    try {
+      // Map the status to the appropriate API endpoint
+      let endpoint = '';
+      
+      switch (newStatus) {
+        case 'APPROVED':
+          endpoint = `http://localhost:8085/garbage/${id}/approve`;
+          break;
+        case 'REJECTED':
+          endpoint = `http://localhost:8085/garbage/${id}/reject`;
+          break;
+        case 'IN_PROGRESS':
+          endpoint = `http://localhost:8085/garbage/${id}/markInProgress`;
+          break;
+        case 'COMPLETED':
+          endpoint = `http://localhost:8085/garbage/${id}/complete`;
+          break;
+        default:
+          throw new Error(`Unsupported status: ${newStatus}`);
+      }
+      
+      // Send the request to the specific endpoint
+      const response = await fetch(endpoint, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status} - ${response.statusText}`);
+      }
+      
+      // Update the local state to reflect the new status
+      setPickupRequests(prevRequests => 
+        prevRequests.map(request => 
+          request.id === id ? 
+          {
+            ...request, 
+            status: newStatus === 'COMPLETED' ? 'completed' : 
+                   newStatus === 'IN_PROGRESS' ? 'in-progress' : 
+                   'pending'
+          } : 
+          request
+        )
+      );
+      
+      console.log(`Status for item ${id} updated to ${newStatus} successfully`);
+      
+    } catch (err) {
+      console.error(`Failed to update status for item ${id}:`, err);
+      setStatusUpdateError(prev => ({
+        ...prev, 
+        [id]: err instanceof Error ? err.message : 'Failed to update status'
+      }));
+    } finally {
+      setStatusUpdating(prev => ({...prev, [id]: false}));
+    }
+  };
+
   // Render the garbage items table
   const renderGarbageTable = () => {
     if (isLoading) {
@@ -496,36 +567,61 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Request ID</th>
+                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
+                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight</th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Points</th>
+                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {garbageItems.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50">
-                  <td className="py-4 px-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.id}</td>
-                  <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{item.title}</td>
-                  <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                      {item.category.replace('_', ' ')}
-                    </span>
+              {paginatedRequests.map((request) => (
+                <tr key={request.id} className="hover:bg-gray-50">
+                  <td className="py-4 px-4 whitespace-nowrap text-sm font-medium text-gray-900">{request.id}</td>
+                  <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.user}</td>
+                  <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.location}</td>
+                  <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.items}</td>
+                  <td className="py-4 px-4 whitespace-nowrap text-sm">
+                    <span 
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                        ${request.status === 'completed' ? 'bg-green-100 text-green-800' : 
+                          request.status === 'in-progress' ? 'bg-blue-100 text-blue-800' : 
+                            'bg-yellow-100 text-yellow-800'}`}
+                  >
+                    {request.status === 'completed' ? 'Completed' : 
+                      request.status === 'in-progress' ? 'In Progress' : 'Pending'}
+                </span>
                   </td>
-                  <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{item.location}</td>
-                  <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{item.weight} kg</td>
-                  <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{item.points}</td>
-                  <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700 flex gap-2">
-                    <button className="px-3 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200">Edit</button>
-                    <button 
-                      onClick={() => handleDeleteClick(item)}
-                      className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200"
-                    >
-                      Delete
-                    </button>
+                  <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.weight}</td>
+                  <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.category}</td>
+                  <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">
+                    <div className="relative">
+                      <select
+                        className="appearance-none bg-white border border-gray-300 rounded-md py-1 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        onChange={(e) => handleStatusChange(request.id, e.target.value)}
+                        value=""
+                        disabled={statusUpdating[request.id]}
+                      >
+                        <option value="" disabled>Change Status</option>
+                        {availableStatuses.map((status) => (
+                          <option key={status} value={status}>{status.replace('_', ' ')}</option>
+                        ))}
+                      </select>
+                      {statusUpdating[request.id] && (
+                        <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
+                          <svg className="animate-spin h-4 w-4 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        </div>
+                      )}
+                      {statusUpdateError[request.id] && (
+                        <div className="text-xs text-red-600 mt-1">{statusUpdateError[request.id]}</div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -535,37 +631,65 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
         
         {/* Mobile Cards */}
         <div className="md:hidden">
-          {garbageItems.map((item) => (
-            <div key={item.id} className="border-b border-gray-200 p-4">
+          {paginatedRequests.map((request) => (
+            <div key={request.id} className="border-b border-gray-200 p-4">
               <div className="flex justify-between items-start mb-2">
-                <span className="font-medium text-gray-900">{item.title}</span>
-                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                  {item.category.replace('_', ' ')}
+                <span className="font-medium text-gray-900">{request.id}</span>
+                <span 
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                    ${request.status === 'completed' ? 'bg-green-100 text-green-800' : 
+                      request.status === 'in-progress' ? 'bg-blue-100 text-blue-800' : 
+                        'bg-yellow-100 text-yellow-800'}`}
+                >
+                  {request.status === 'completed' ? 'Completed' : 
+                    request.status === 'in-progress' ? 'In Progress' : 'Pending'}
                 </span>
               </div>
               
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className="text-gray-500">ID:</div>
-                <div className="text-right">{item.id}</div>
+                <div className="text-gray-500">User:</div>
+                <div className="text-right">{request.user}</div>
                 
                 <div className="text-gray-500">Location:</div>
-                <div className="text-right">{item.location}</div>
+                <div className="text-right">{request.location}</div>
+                
+                <div className="text-gray-500">Items:</div>
+                <div className="text-right">{request.items}</div>
                 
                 <div className="text-gray-500">Weight:</div>
-                <div className="text-right">{item.weight} kg</div>
+                <div className="text-right">{request.weight}</div>
                 
-                <div className="text-gray-500">Points:</div>
-                <div className="text-right">{item.points}</div>
-              </div>
-              
-              <div className="mt-3 flex justify-end gap-2">
-                <button className="px-3 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 text-sm">Edit</button>
-                <button 
-                  onClick={() => handleDeleteClick(item)}
-                  className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200 text-sm"
-                >
-                  Delete
-                </button>
+                <div className="text-gray-500">Category:</div>
+                <div className="text-right">{request.category}</div>
+                
+                {/* Add status change dropdown to mobile view */}
+                <div className="text-gray-500">Change Status:</div>
+                <div className="text-right">
+                  <div className="inline-block relative">
+                    <select
+                      className="appearance-none bg-white border border-gray-300 rounded-md py-1 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      onChange={(e) => handleStatusChange(request.id, e.target.value)}
+                      value=""
+                      disabled={statusUpdating[request.id]}
+                    >
+                      <option value="" disabled>Select</option>
+                      {availableStatuses.map((status) => (
+                        <option key={status} value={status}>{status.replace('_', ' ')}</option>
+                      ))}
+                    </select>
+                    {statusUpdating[request.id] && (
+                      <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
+                        <svg className="animate-spin h-4 w-4 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  {statusUpdateError[request.id] && (
+                    <div className="text-xs text-red-600 mt-1">{statusUpdateError[request.id]}</div>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -1022,6 +1146,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight</th>
                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
@@ -1044,6 +1169,32 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                               </td>
                               <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.weight}</td>
                               <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.category}</td>
+                              <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">
+                                <div className="relative">
+                                  <select
+                                    className="appearance-none bg-white border border-gray-300 rounded-md py-1 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                    onChange={(e) => handleStatusChange(request.id, e.target.value)}
+                                    value=""
+                                    disabled={statusUpdating[request.id]}
+                                  >
+                                    <option value="" disabled>Change Status</option>
+                                    {availableStatuses.map((status) => (
+                                      <option key={status} value={status}>{status.replace('_', ' ')}</option>
+                                    ))}
+                                  </select>
+                                  {statusUpdating[request.id] && (
+                                    <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
+                                      <svg className="animate-spin h-4 w-4 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                      </svg>
+                                    </div>
+                                  )}
+                                  {statusUpdateError[request.id] && (
+                                    <div className="text-xs text-red-600 mt-1">{statusUpdateError[request.id]}</div>
+                                  )}
+                                </div>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -1082,6 +1233,35 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                             
                             <div className="text-gray-500">Category:</div>
                             <div className="text-right">{request.category}</div>
+                            
+                            {/* Add status change dropdown to mobile view */}
+                            <div className="text-gray-500">Change Status:</div>
+                            <div className="text-right">
+                              <div className="inline-block relative">
+                                <select
+                                  className="appearance-none bg-white border border-gray-300 rounded-md py-1 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                  onChange={(e) => handleStatusChange(request.id, e.target.value)}
+                                  value=""
+                                  disabled={statusUpdating[request.id]}
+                                >
+                                  <option value="" disabled>Select</option>
+                                  {availableStatuses.map((status) => (
+                                    <option key={status} value={status}>{status.replace('_', ' ')}</option>
+                                  ))}
+                                </select>
+                                {statusUpdating[request.id] && (
+                                  <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
+                                    <svg className="animate-spin h-4 w-4 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                  </div>
+                                )}
+                              </div>
+                              {statusUpdateError[request.id] && (
+                                <div className="text-xs text-red-600 mt-1">{statusUpdateError[request.id]}</div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -1390,4 +1570,3 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
 };
 
 export default AdminDashboard;
-   
