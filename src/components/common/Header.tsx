@@ -208,7 +208,7 @@ const EcoTechNavbar = () => {
                   <Link to="/settings" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200">
                     Your Profile
                   </Link>
-                  <Link to="/client/account-settings" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200">
+                  <Link to="/settings" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200">
                     Settings
                   </Link>
                   <Link to="/client/all-requests" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200">
@@ -289,7 +289,7 @@ const EcoTechNavbar = () => {
                 <span className="text-xs text-gray-600">Search</span>
               </button>
               
-              <Link to="/client/account-settings" className="flex flex-col items-center p-3 hover:bg-gray-100 rounded-lg transition-colors min-w-[70px] min-h-[70px]">
+              <Link to="/settings" className="flex flex-col items-center p-3 hover:bg-gray-100 rounded-lg transition-colors min-w-[70px] min-h-[70px]">
                 {localStorage.getItem("userProfileImage") ? (
                   <img 
                     src={localStorage.getItem("userProfileImage") || ""} 
