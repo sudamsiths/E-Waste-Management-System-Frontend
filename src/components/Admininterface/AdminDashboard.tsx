@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import './AdminDashboard.css';
 import ManageUserProfile from './ManageUserProfile';
 import ManageAgentProfile from './ManageAgentProfile';
@@ -23,13 +23,13 @@ interface StatData {
 
 interface RequestData {
   id: string;
-  user: string;
   location: string;
   items: string;
   status: 'completed' | 'in-progress' | 'pending' | 'APPROVED' | 'REJECTED';
   weight: string;
   category: string;
   SubmissionDate: string;
+  assignedAgent?: string;
 }
 
 // Define Category type to match backend (enum replaced with union type for erasableSyntaxOnly)
@@ -56,6 +56,17 @@ interface GarbageItem {
   description: string;
 }
 
+// Interface for Agent entity
+interface Agent {
+  agentId: number;
+  fullName: string;
+  email: string;
+  contactNumber: string;
+  assignBranch: string;
+  status: "Active" | "Pending" | "Inactive";
+  joinedDate?: string;
+}
+
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard' }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -71,7 +82,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   // New state variables for pickup requests
   const [pickupRequests, setPickupRequests] = useState<RequestData[]>([]);
@@ -88,6 +98,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
     { title: 'Pending Pickups', value: '0', change: '0%', positive: false }
   ]);
   const [statsLoading, setStatsLoading] = useState(false);
+  
+  // Add state for agents
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [agentsLoading, setAgentsLoading] = useState(false);
+  const [agentsError, setAgentsError] = useState<string | null>(null);
+  const [agentAssigning, setAgentAssigning] = useState<{[key: string]: boolean}>({});
+  const [agentAssignError, setAgentAssignError] = useState<{[key: string]: string}>({});
+  const [agentAssignSuccess, setAgentAssignSuccess] = useState<{[key: string]: boolean}>({});
   
   // Calculate total pages and paginated requests
   const totalRequestPages = useMemo(() => Math.ceil(pickupRequests.length / requestsPerPage), [pickupRequests, requestsPerPage]);
@@ -261,7 +279,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
       // Map to RequestData format for display
       const mappedRequests: RequestData[] = latestItems.map((item: any) => ({
         id: String(item.id || ''),
-        user: item.userName || item.createdBy || 'Unknown',
         location: item.location || 'Not specified',
         items: item.title || item.description || 'Unknown item',
         status: item.status ? 
@@ -269,7 +286,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
           (String(item.status).toLowerCase().includes('progress') ? 'in-progress' : 'pending')) : 'pending',
         weight: `${item.weight || 0} kg`,
         category: item.category || 'MISC',
-        SubmissionDate: new Date(item.submissionDate || item.SubmissionDate).toLocaleDateString()
+        SubmissionDate: new Date(item.submissionDate || item.SubmissionDate).toLocaleDateString(),
+        assignedAgent: item.assignedAgent || 'Unassigned'
       }));
       
       setPickupRequests(mappedRequests);
@@ -359,6 +377,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
     if (activeTab === 'dashboard') {
       fetchPickupRequests();
       fetchDashboardStats();
+      fetchAgents();
     }
   }, [activeTab]);
 
@@ -547,6 +566,203 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
     }
   };
 
+  // Function to fetch all agents using the filtered API
+  const fetchAgents = async () => {
+    setAgentsLoading(true);
+    setAgentsError(null);
+    
+    try {
+      console.log('Fetching agents from API...');
+      
+      // Try the filtered endpoint first
+      let response;
+      let agentData;
+      
+      try {
+        response = await fetch('http://localhost:8082/agent/GetAll/AgentsName', {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          agentData = await response.json();
+          console.log('Raw agent data from filtered API:', agentData);
+        } else {
+          throw new Error(`Filtered API failed: ${response.status}`);
+        }
+      } catch (filteredError) {
+        console.warn('Filtered API failed, trying fallback:', filteredError);
+        
+        // Fallback to the general agent endpoint
+        response = await fetch('http://localhost:8082/agent/getAll', {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Both APIs failed. Status: ${response.status} - ${response.statusText}`);
+        }
+        
+        agentData = await response.json();
+        console.log('Raw agent data from fallback API:', agentData);
+      }
+      
+      // Handle different response structures
+      let agentsArray = [];
+      
+      if (Array.isArray(agentData)) {
+        agentsArray = agentData;
+      } else if (agentData && agentData.data && Array.isArray(agentData.data)) {
+        agentsArray = agentData.data;
+      } else if (agentData && agentData.content && Array.isArray(agentData.content)) {
+        agentsArray = agentData.content;
+      } else if (agentData && agentData.agents && Array.isArray(agentData.agents)) {
+        agentsArray = agentData.agents;
+      } else {
+        console.warn('Unexpected agent data structure:', agentData);
+        agentsArray = [];
+      }
+      
+      // Transform the agent data to match our interface
+      const transformedAgents: Agent[] = agentsArray.map((agent: any, index: number) => ({
+        agentId: agent.agentId || agent.id || agent.agent_id || (index + 1),
+        fullName: agent.fullName || agent.name || agent.full_name || agent.firstName + ' ' + agent.lastName || 'Agent ' + (index + 1),
+        email: agent.email || agent.emailAddress || '',
+        contactNumber: agent.contactNumber || agent.phone || agent.phoneNumber || agent.contact || '',
+        assignBranch: typeof agent.assignBranch === 'string' ? agent.assignBranch : 
+                     agent.assignBranch?.name || agent.branch?.name || agent.branchName || 'No Branch',
+        status: agent.status || agent.agentStatus || 'Active',
+        joinedDate: agent.joinedDate || agent.createdDate || agent.created_at || new Date().toISOString()
+      }));
+      
+      console.log('Transformed agents:', transformedAgents);
+      
+      if (transformedAgents.length === 0) {
+        console.warn('No agents found, using test data');
+        // Provide test data if no agents are found
+        const testAgents: Agent[] = [
+          {
+            agentId: 1,
+            fullName: 'John Doe',
+            email: 'john.doe@ewaste.com',
+            contactNumber: '+1234567890',
+            assignBranch: 'Main Branch',
+            status: 'Active',
+            joinedDate: new Date().toISOString()
+          },
+          {
+            agentId: 2,
+            fullName: 'Jane Smith',
+            email: 'jane.smith@ewaste.com',
+            contactNumber: '+0987654321',
+            assignBranch: 'North Branch',
+            status: 'Active',
+            joinedDate: new Date().toISOString()
+          }
+        ];
+        setAgents(testAgents);
+        setAgentsError('No agents from API - using test data. Check agent service connection.');
+      } else {
+        setAgents(transformedAgents);
+      }
+      
+    } catch (err) {
+      console.error('Failed to fetch agents:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch agents';
+      setAgentsError(`${errorMessage}. Please check if the agent service is running on port 8082.`);
+    } finally {
+      setAgentsLoading(false);
+    }
+  };
+
+  const handleAgentAssign = async (requestId: string, agentId: string) => {
+    if (!agentId) return;
+    
+    setAgentAssigning(prev => ({...prev, [requestId]: true}));
+    setAgentAssignError(prev => ({...prev, [requestId]: ''}));
+    setAgentAssignSuccess(prev => ({...prev, [requestId]: false}));
+    
+    try {
+      // Get selected agent details
+      const selectedAgent = agents.find(agent => agent.agentId.toString() === agentId);
+      
+      if (!selectedAgent) {
+        throw new Error('Selected agent not found');
+      }
+
+      // Update the garbage details with assigned agent
+      const updateResponse = await fetch(`http://localhost:8085/garbage/assign-agent/${requestId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          assignedAgentId: selectedAgent.agentId,
+          assignedAgentName: selectedAgent.fullName
+        })
+      });
+      
+      if (!updateResponse.ok) {
+        // If the specific assign-agent endpoint doesn't exist, try a general update endpoint
+        const generalUpdateResponse = await fetch(`http://localhost:8085/garbage/${requestId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            assignedAgentId: selectedAgent.agentId,
+            assignedAgent: selectedAgent.fullName
+          })
+        });
+        
+        if (!generalUpdateResponse.ok) {
+          throw new Error(`Failed to update garbage details: ${generalUpdateResponse.status} - ${generalUpdateResponse.statusText}`);
+        }
+      }
+      
+      // Update the local state to reflect the assigned agent
+      setPickupRequests(prevRequests => 
+        prevRequests.map(request => 
+          request.id === requestId ? 
+          {
+            ...request, 
+            assignedAgent: selectedAgent.fullName
+          } : 
+          request
+        )
+      );
+      
+      console.log(`Agent ${selectedAgent.fullName} successfully assigned to request ${requestId} and saved to database`);
+      
+      // Set success state
+      setAgentAssignSuccess(prev => ({...prev, [requestId]: true}));
+      
+      // Refresh pickup requests to get the latest data from the server
+      await fetchPickupRequests();
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setAgentAssignSuccess(prev => ({...prev, [requestId]: false}));
+      }, 3000);
+      
+    } catch (err) {
+      console.error(`Failed to assign agent to request ${requestId}:`, err);
+      setAgentAssignError(prev => ({
+        ...prev, 
+        [requestId]: err instanceof Error ? err.message : 'Failed to assign agent'
+      }));
+    } finally {
+      setAgentAssigning(prev => ({...prev, [requestId]: false}));
+    }
+  };
+
   // Render the garbage items table
   const renderGarbageTable = () => {
     if (isLoading) {
@@ -689,16 +905,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
       </div>
     );
   }
-
-  // add derived summary for Recent Pickup Requests subtitle
-  const recentSummary = useMemo(() => {
-    if (requestsLoading) return 'Loading latest items from server...';
-    if (requestsError) return requestsError;
-    if (!pickupRequests.length) return 'No recent garbage items found.';
-    // show count and up to 3 item titles for brevity
-    const titles = pickupRequests.map(r => r.items).slice(0, 3).join(', ');
-    return `Showing ${pickupRequests.length} latest item(s): ${titles}${pickupRequests.length > 3 ? ', …' : ''}`;
-  }, [requestsLoading, requestsError, pickupRequests]);
 
   return (
     <div className="admin-dashboard bg-gray-100 min-h-screen flex flex-col">
@@ -1052,18 +1258,38 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
                       <h2 className="text-lg font-bold text-gray-800">Recent Pickup Requests</h2>
-                      <p className="text-sm text-gray-500">Latest 5 garbage items from database</p>
+                      <p className="text-sm text-gray-500">Latest 5 garbage items with agent assignment functionality</p>
                     </div>
                     
                     <div className="flex items-center gap-2">
                       <button 
-                        onClick={fetchPickupRequests}
+                        onClick={() => {
+                          fetchPickupRequests();
+                          fetchAgents();
+                        }}
                         className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 text-sm font-medium hover:bg-gray-50 flex items-center gap-2"
-                        disabled={requestsLoading}
+                        disabled={requestsLoading || agentsLoading}
                       >
-                        <RefreshCcw className={`w-4 h-4 ${requestsLoading ? 'animate-spin' : ''}`} />
+                        <RefreshCcw className={`w-4 h-4 ${requestsLoading || agentsLoading ? 'animate-spin' : ''}`} />
                         <span>Refresh</span>
                       </button>
+                      {agentsError && (
+                        <button 
+                          onClick={fetchAgents}
+                          className="px-3 py-2 border border-red-300 bg-red-50 rounded-lg text-red-700 text-sm font-medium hover:bg-red-100 flex items-center gap-2"
+                          disabled={agentsLoading}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                          </svg>
+                          <span>Retry Agents</span>
+                        </button>
+                      )}
+                      {!agentsError && agents.length > 0 && (
+                        <span className="px-3 py-2 bg-green-50 text-green-700 text-sm rounded-lg">
+                          {agents.length} agent{agents.length !== 1 ? 's' : ''} loaded
+                        </span>
+                      )}
                       <button className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">
                         New Request
                       </button>
@@ -1072,20 +1298,28 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                 </div>
                 
                 {/* Loading State */}
-                {requestsLoading && (
+                {(requestsLoading || agentsLoading) && (
                   <div className="flex justify-center items-center p-12">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
+                    <p className="ml-3 text-gray-600">
+                      {requestsLoading && agentsLoading ? 'Loading requests and agents...' :
+                       requestsLoading ? 'Loading requests...' : 'Loading agents...'}
+                    </p>
                   </div>
                 )}
                 
                 {/* Error State */}
-                {requestsError && !requestsLoading && (
+                {(requestsError || agentsError) && !requestsLoading && !agentsLoading && (
                   <div className="p-6">
                     <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
-                      <p className="font-medium">Error Loading Pickup Requests</p>
-                      <p className="text-sm">{requestsError}</p>
+                      <p className="font-medium">Error Loading Data</p>
+                      {requestsError && <p className="text-sm">Requests: {requestsError}</p>}
+                      {agentsError && <p className="text-sm">Agents: {agentsError}</p>}
                       <button 
-                        onClick={fetchPickupRequests}
+                        onClick={() => {
+                          fetchPickupRequests();
+                          fetchAgents();
+                        }}
                         className="mt-2 px-3 py-1 bg-red-100 text-red-800 text-sm font-medium rounded hover:bg-red-200"
                       >
                         Try Again
@@ -1095,7 +1329,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                 )}
                 
                 {/* Empty State */}
-                {!requestsLoading && !requestsError && pickupRequests.length === 0 && (
+                {!requestsLoading && !agentsLoading && !requestsError && !agentsError && pickupRequests.length === 0 && (
                   <div className="text-center py-12">
                     <div className="mx-auto h-12 w-12 text-gray-400">
                       <svg className="h-full w-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1108,7 +1342,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                 )}
                 
                 {/* Data Table */}
-                {!requestsLoading && !requestsError && pickupRequests.length > 0 && (
+                {!requestsLoading && !agentsLoading && !requestsError && !agentsError && pickupRequests.length > 0 && (
                   <>
                     {/* Desktop Table */}
                     <div className="hidden md:block overflow-x-auto">
@@ -1116,13 +1350,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                         <thead className="bg-gray-50">
                           <tr>
                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Request ID</th>
-                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight</th>
                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submission Date</th>
+                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assign Agent</th>
                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                           </tr>
                         </thead>
@@ -1130,7 +1364,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                           {paginatedRequests.map((request) => (
                             <tr key={request.id} className="hover:bg-gray-50">
                               <td className="py-4 px-4 whitespace-nowrap text-sm font-medium text-gray-900">{request.id}</td>
-                              <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.user}</td>
                               <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.location}</td>
                               <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.items}</td>
                               <td className="py-4 px-4 whitespace-nowrap text-sm">
@@ -1147,6 +1380,59 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                               <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.weight}</td>
                               <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.category}</td>
                               <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">{request.SubmissionDate}</td>
+                              <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">
+                                <div className="relative">
+                                  <select
+                                    className="appearance-none bg-white border border-gray-300 rounded-md py-1 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent pr-8"
+                                    onChange={(e) => handleAgentAssign(request.id, e.target.value)}
+                                    value={request.assignedAgent === 'Unassigned' ? '' : agents.find(agent => agent.fullName === request.assignedAgent)?.agentId.toString() || ''}
+                                    disabled={agentAssigning[request.id] || agentsLoading}
+                                  >
+                                    <option value="">
+                                      {agentsLoading ? 'Loading agents...' :
+                                       agentsError ? 'Error loading agents' :
+                                       agents.length === 0 ? 'No agents available' :
+                                       request.assignedAgent === 'Unassigned' ? 'Select Agent' : request.assignedAgent}
+                                    </option>
+                                    {!agentsLoading && !agentsError && agents.filter(agent => agent.status === 'Active').map((agent) => (
+                                      <option key={agent.agentId} value={agent.agentId.toString()}>
+                                        {agent.fullName} {agent.assignBranch ? `(${agent.assignBranch})` : ''}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  
+                                  {agentAssigning[request.id] && (
+                                    <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
+                                      <svg className="animate-spin h-4 w-4 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                      </svg>
+                                    </div>
+                                  )}
+                                  
+                                  {agentAssignError[request.id] && (
+                                    <div className="text-xs text-red-600 mt-1">{agentAssignError[request.id]}</div>
+                                  )}
+                                  
+                                  {agentAssignSuccess[request.id] && (
+                                    <div className="text-xs text-green-600 mt-1">✓ Agent assigned successfully!</div>
+                                  )}
+                                  {agentAssigning[request.id] && (
+                                    <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
+                                      <svg className="animate-spin h-4 w-4 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                      </svg>
+                                    </div>
+                                  )}
+                                  {agentAssignError[request.id] && (
+                                    <div className="text-xs text-red-600 mt-1">{agentAssignError[request.id]}</div>
+                                  )}
+                                  {agentAssignSuccess[request.id] && (
+                                    <div className="text-xs text-green-600 mt-1">✓ Agent assigned successfully!</div>
+                                  )}
+                                </div>
+                              </td>
                               <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">
                                 <div className="relative">
                                   <select
@@ -1197,9 +1483,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                           </div>
                           
                           <div className="grid grid-cols-2 gap-2 text-sm">
-                            <div className="text-gray-500">User:</div>
-                            <div className="text-right">{request.user}</div>
-                            
                             <div className="text-gray-500">Location:</div>
                             <div className="text-right">{request.location}</div>
                             
@@ -1214,6 +1497,45 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
 
                             <div className="text-gray-500">Submission Date:</div>
                             <div className="text-right">{request.SubmissionDate}</div>
+                            
+                            {/* Add assign agent dropdown to mobile view */}
+                            <div className="text-gray-500">Assign Agent:</div>
+                            <div className="text-right">
+                              <div className="inline-block relative">
+                                <select
+                                  className="appearance-none bg-white border border-gray-300 rounded-md py-1 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                  onChange={(e) => handleAgentAssign(request.id, e.target.value)}
+                                  value={request.assignedAgent === 'Unassigned' ? '' : agents.find(agent => agent.fullName === request.assignedAgent)?.agentId.toString() || ''}
+                                  disabled={agentAssigning[request.id] || agentsLoading}
+                                >
+                                  <option value="">
+                                    {agentsLoading ? 'Loading agents...' :
+                                     agentsError ? 'Error loading agents' :
+                                     agents.length === 0 ? 'No agents available' :
+                                     request.assignedAgent === 'Unassigned' ? 'Select Agent' : request.assignedAgent}
+                                  </option>
+                                  {!agentsLoading && !agentsError && agents.filter(agent => agent.status === 'Active').map((agent) => (
+                                    <option key={agent.agentId} value={agent.agentId.toString()}>
+                                      {agent.fullName} {agent.assignBranch ? `(${agent.assignBranch})` : ''}
+                                    </option>
+                                  ))}
+                                </select>
+                                {agentAssigning[request.id] && (
+                                  <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
+                                    <svg className="animate-spin h-4 w-4 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                  </div>
+                                )}
+                              </div>
+                              {agentAssignError[request.id] && (
+                                <div className="text-xs text-red-600 mt-1">{agentAssignError[request.id]}</div>
+                              )}
+                              {agentAssignSuccess[request.id] && (
+                                <div className="text-xs text-green-600 mt-1">✓ Agent assigned successfully!</div>
+                              )}
+                            </div>
                             
                             {/* Add status change dropdown to mobile view */}
                             <div className="text-gray-500">Change Status:</div>
@@ -1391,7 +1713,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                   
                   <div className="flex items-center gap-2">
                     <button 
-                      onClick={() => setRefreshTrigger(prev => prev + 1)}
+                      onClick={() => fetchAgents()}
                       className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 text-sm font-medium hover:bg-gray-50 flex items-center gap-2"
                     >
                       <RefreshCcw className="w-4 h-4" />
@@ -1604,7 +1926,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
             <div className="p-6">
               <AddAgent onSuccess={() => {
                 setShowAddAgentForm(false);
-                setRefreshTrigger(prev => prev + 1);
+                fetchAgents();
               }} />
             </div>
           </div>
