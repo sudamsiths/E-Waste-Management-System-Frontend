@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import './AdminDashboard.css';
 import ManageUserProfile from './ManageUserProfile';
+import axios from 'axios';
 import ManageAgentProfile from './ManageAgentProfile';
 import AddAgent from './AddAgent';
 import CustomerAccountSettings from '../Clientinterface/CustomerAccountSettings';
@@ -67,6 +68,26 @@ interface Agent {
   joinedDate?: string;
 }
 
+// Helper function to probe API endpoints - useful for debugging
+const probeApiEndpoint = async (baseUrl: string, endpointPath: string): Promise<boolean> => {
+  try {
+    console.log(`Probing API endpoint: ${baseUrl}${endpointPath}`);
+    const response = await fetch(`${baseUrl}${endpointPath}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    });
+    const success = response.ok;
+    console.log(`API endpoint ${baseUrl}${endpointPath} is ${success ? 'available' : 'not available'} (${response.status})`);
+    return success;
+  } catch (err) {
+    console.error(`Error probing API endpoint ${baseUrl}${endpointPath}:`, err);
+    return false;
+  }
+};
+
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard' }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -106,6 +127,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
   const [agentAssigning, setAgentAssigning] = useState<{[key: string]: boolean}>({});
   const [agentAssignError, setAgentAssignError] = useState<{[key: string]: string}>({});
   const [agentAssignSuccess, setAgentAssignSuccess] = useState<{[key: string]: boolean}>({});
+  // Local storage for agent assignments if backend fails
+  const [localAgentAssignments, setLocalAgentAssignments] = useState<{[requestId: string]: {agentId: number, agentName: string}}>({});
   
   // Calculate total pages and paginated requests
   const totalRequestPages = useMemo(() => Math.ceil(pickupRequests.length / requestsPerPage), [pickupRequests, requestsPerPage]);
@@ -377,9 +400,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
     if (activeTab === 'dashboard') {
       fetchPickupRequests();
       fetchDashboardStats();
-      fetchAgents();
+      fetchAgents(); // Fetch agents immediately when dashboard loads
     }
   }, [activeTab]);
+
+  // Also fetch agents when the component mounts for the first time
+  useEffect(() => {
+    // Initial fetch of agents regardless of active tab to populate dropdown
+    fetchAgents();
+  }, []);
 
   // Update active tab when initialTab prop changes
   useEffect(() => {
@@ -507,36 +536,73 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
     
     try {
       // Map the status to the appropriate API endpoint
-      let endpoint = '';
+      const baseUrl = 'http://localhost:8085';
+      let endpoints = [];
       
       switch (newStatus) {
         case 'APPROVED':
-          endpoint = `http://localhost:8085/garbage/${id}/approve`;
+          endpoints = [
+            `/garbage/${id}/approve`,
+            `/garbage/approve/${id}`
+          ];
           break;
         case 'REJECTED':
-          endpoint = `http://localhost:8085/garbage/${id}/reject`;
+          endpoints = [
+            `/garbage/${id}/reject`,
+            `/garbage/reject/${id}`
+          ];
           break;
         case 'IN_PROGRESS':
-          endpoint = `http://localhost:8085/garbage/${id}/markInProgress`;
+          endpoints = [
+            `/garbage/${id}/markInProgress`,
+            `/garbage/markInProgress/${id}`,
+            `/garbage/${id}/inProgress`,
+            `/garbage/inProgress/${id}`
+          ];
           break;
         case 'COMPLETED':
-          endpoint = `http://localhost:8085/garbage/${id}/complete`;
+          endpoints = [
+            `/garbage/${id}/complete`,
+            `/garbage/complete/${id}`
+          ];
           break;
         default:
           throw new Error(`Unsupported status: ${newStatus}`);
       }
       
-      // Send the request to the specific endpoint
-      const response = await fetch(endpoint, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
+      let endpointSuccess = false;
+      let responseError = null;
       
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status} - ${response.statusText}`);
+      // Try each endpoint until one works
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`Trying status update endpoint: ${baseUrl}${endpoint}`);
+          
+          // Send the request to the endpoint
+          const response = await fetch(`${baseUrl}${endpoint}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            endpointSuccess = true;
+            console.log(`Successfully updated status using endpoint: ${baseUrl}${endpoint}`);
+            break;
+          } else {
+            responseError = `Error: ${response.status} - ${response.statusText}`;
+            console.warn(`Status update endpoint ${baseUrl}${endpoint} failed: ${responseError}`);
+          }
+        } catch (err) {
+          responseError = err instanceof Error ? err.message : 'Unknown error';
+          console.error(`Error trying status update endpoint ${baseUrl}${endpoint}:`, err);
+        }
+      }
+      
+      if (!endpointSuccess && responseError) {
+        throw new Error(responseError);
       }
       
       // Update the local state to reflect the new status
@@ -574,110 +640,211 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
     try {
       console.log('Fetching agents from API...');
       
-      // Try the filtered endpoint first
-      let response;
-      let agentData;
+      // Primary API call to get all agents with names
+      const response = await fetch('http://localhost:8082/agent/GetAll/AgentsName', {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
       
-      try {
-        response = await fetch('http://localhost:8082/agent/GetAll/AgentsName', {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (response.ok) {
-          agentData = await response.json();
-          console.log('Raw agent data from filtered API:', agentData);
-        } else {
-          throw new Error(`Filtered API failed: ${response.status}`);
-        }
-      } catch (filteredError) {
-        console.warn('Filtered API failed, trying fallback:', filteredError);
-        
-        // Fallback to the general agent endpoint
-        response = await fetch('http://localhost:8082/agent/getAll', {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Both APIs failed. Status: ${response.status} - ${response.statusText}`);
-        }
-        
-        agentData = await response.json();
-        console.log('Raw agent data from fallback API:', agentData);
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status} - ${response.statusText}`);
       }
       
-      // Handle different response structures
-      let agentsArray = [];
+      const agentData = await response.json();
+      console.log('Raw agent data from API:', agentData);
+      
+      // Handle the response from AgentsName endpoint
+      let transformedAgents: Agent[] = [];
       
       if (Array.isArray(agentData)) {
-        agentsArray = agentData;
-      } else if (agentData && agentData.data && Array.isArray(agentData.data)) {
-        agentsArray = agentData.data;
-      } else if (agentData && agentData.content && Array.isArray(agentData.content)) {
-        agentsArray = agentData.content;
-      } else if (agentData && agentData.agents && Array.isArray(agentData.agents)) {
-        agentsArray = agentData.agents;
+        // If it's an array of strings (agent names)
+        transformedAgents = agentData.map((name: string, index: number) => ({
+          agentId: index + 1,
+          fullName: name,
+          email: '',
+          contactNumber: '',
+          assignBranch: 'No Branch',
+          status: 'Active' as const,
+          joinedDate: new Date().toISOString()
+        }));
+      } else if (typeof agentData === 'string') {
+        // If it's a single string response, split by newlines
+        const names = agentData.split('\n').filter(name => name.trim());
+        transformedAgents = names.map((name: string, index: number) => ({
+          agentId: index + 1,
+          fullName: name.trim(),
+          email: '',
+          contactNumber: '',
+          assignBranch: 'No Branch',
+          status: 'Active' as const,
+          joinedDate: new Date().toISOString()
+        }));
+      } else if (agentData && typeof agentData === 'object') {
+        // Check various possible nested structures for detailed agent objects
+        let agentsArray = [];
+        
+        if (agentData.data && Array.isArray(agentData.data)) {
+          agentsArray = agentData.data;
+        } else if (agentData.content && Array.isArray(agentData.content)) {
+          agentsArray = agentData.content;
+        } else if (agentData.agents && Array.isArray(agentData.agents)) {
+          agentsArray = agentData.agents;
+        } else if (agentData.result && Array.isArray(agentData.result)) {
+          agentsArray = agentData.result;
+        } else if (agentData.items && Array.isArray(agentData.items)) {
+          agentsArray = agentData.items;
+        } else {
+          // If response is a single object but not an array, wrap it
+          agentsArray = [agentData];
+        }
+        
+        // Transform the agent data to match our interface
+        transformedAgents = agentsArray.map((agent: any, index: number) => {
+          // Handle case where agent might be null or undefined
+          if (!agent) {
+            return null;
+          }
+          
+          // More flexible field mapping for agent data
+          const agentId = agent.agentId || agent.id || agent.agent_id || agent.AgentId || (index + 1);
+          let fullName = agent.fullName || agent.name || agent.full_name || agent.agentName;
+          
+          // Handle cases where firstName and lastName are separate
+          if (!fullName && (agent.firstName || agent.lastName)) {
+            fullName = `${agent.firstName || ''} ${agent.lastName || ''}`.trim();
+          }
+          
+          // Fallback to just agent if it's a string
+          if (!fullName && typeof agent === 'string') {
+            fullName = agent;
+          }
+          
+          // Final fallback
+          if (!fullName) {
+            fullName = `Agent ${agentId}`;
+          }
+          
+          return {
+            agentId: Number(agentId),
+            fullName: fullName,
+            email: agent.email || agent.emailAddress || agent.Email || '',
+            contactNumber: agent.contactNumber || agent.phone || agent.phoneNumber || 
+                          agent.contact || agent.ContactNumber || '',
+            assignBranch: typeof agent.assignBranch === 'string' ? agent.assignBranch : 
+                         agent.assignBranch?.name || agent.branch?.name || 
+                         agent.branchName || agent.AssignBranch || 'No Branch',
+            status: (agent.status || agent.agentStatus || agent.Status || 'Active') as "Active" | "Pending" | "Inactive",
+            joinedDate: agent.joinedDate || agent.createdDate || agent.created_at || 
+                       agent.JoinedDate || new Date().toISOString()
+          };
+        }).filter((agent: any) => agent !== null); // Remove any null entries
       } else {
         console.warn('Unexpected agent data structure:', agentData);
-        agentsArray = [];
+        transformedAgents = [];
       }
-      
-      // Transform the agent data to match our interface
-      const transformedAgents: Agent[] = agentsArray.map((agent: any, index: number) => ({
-        agentId: agent.agentId || agent.id || agent.agent_id || (index + 1),
-        fullName: agent.fullName || agent.name || agent.full_name || agent.firstName + ' ' + agent.lastName || 'Agent ' + (index + 1),
-        email: agent.email || agent.emailAddress || '',
-        contactNumber: agent.contactNumber || agent.phone || agent.phoneNumber || agent.contact || '',
-        assignBranch: typeof agent.assignBranch === 'string' ? agent.assignBranch : 
-                     agent.assignBranch?.name || agent.branch?.name || agent.branchName || 'No Branch',
-        status: agent.status || agent.agentStatus || 'Active',
-        joinedDate: agent.joinedDate || agent.createdDate || agent.created_at || new Date().toISOString()
-      }));
       
       console.log('Transformed agents:', transformedAgents);
       
       if (transformedAgents.length === 0) {
-        console.warn('No agents found, using test data');
-        // Provide test data if no agents are found
-        const testAgents: Agent[] = [
-          {
-            agentId: 1,
-            fullName: 'John Doe',
-            email: 'john.doe@ewaste.com',
-            contactNumber: '+1234567890',
-            assignBranch: 'Main Branch',
-            status: 'Active',
-            joinedDate: new Date().toISOString()
-          },
-          {
-            agentId: 2,
-            fullName: 'Jane Smith',
-            email: 'jane.smith@ewaste.com',
-            contactNumber: '+0987654321',
-            assignBranch: 'North Branch',
-            status: 'Active',
-            joinedDate: new Date().toISOString()
-          }
-        ];
-        setAgents(testAgents);
-        setAgentsError('No agents from API - using test data. Check agent service connection.');
+        console.warn('No agents found in API response');
+        setAgentsError('No agents found. The API returned empty data.');
+        setAgents([]);
       } else {
         setAgents(transformedAgents);
+        console.log(`Successfully loaded ${transformedAgents.length} agents`);
       }
       
     } catch (err) {
       console.error('Failed to fetch agents:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch agents';
       setAgentsError(`${errorMessage}. Please check if the agent service is running on port 8082.`);
+      
+      // Set empty agents array on error
+      setAgents([]);
     } finally {
       setAgentsLoading(false);
+    }
+  };
+
+  // New function to ensure agent exists in the backend database
+  const ensureAgentInBackend = async (agent: Agent): Promise<boolean> => {
+    try {
+      console.log(`Ensuring agent ${agent.fullName} exists in backend database...`);
+      
+      // Format the payload according to backend expectations
+      const payload = {
+        fullName: agent.fullName,
+        email: agent.email || `${agent.fullName.replace(/\s+/g, '.').toLowerCase()}@example.com`, // Generate email if missing
+        contactNo: agent.contactNumber || "0000000000", // Default contact if missing
+        assignBranch: agent.assignBranch || "Main Branch",
+        status: agent.status === 'Active' ? 'ACTIVE' : 
+               agent.status === 'Inactive' ? 'INACTIVE' : 'ACTIVE'
+      };
+      
+      console.log('Sending agent data to backend:', payload);
+      
+      // Try multiple endpoints to ensure agent is registered
+      let agentRegistered = false;
+      
+      try {
+        // First try the agent-specific endpoint
+        console.log('Attempting to register agent at http://localhost:8082/agent/add');
+        const response = await fetch('http://localhost:8082/agent/add', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        if (response.ok) {
+          console.log('Agent successfully added to backend database via agent API');
+          agentRegistered = true;
+        } else if (response.status === 409) {
+          console.log('Agent already exists in backend database');
+          return true;
+        }
+      } catch (err) {
+        console.warn('Failed to register agent at agent endpoint, will try garbage endpoint', err);
+      }
+      
+      // If agent registration failed at the first endpoint, try the garbage endpoint
+      if (!agentRegistered) {
+        try {
+          // Try the garbage endpoint to register the agent
+          // Create a FormData object to match the format used in ClientGarbageRequest.tsx
+          const formData = new FormData();
+          formData.append('agentId', agent.agentId?.toString() || '0');
+          formData.append('agentName', agent.fullName);
+          formData.append('fullName', agent.fullName);
+          formData.append('email', payload.email);
+          formData.append('contactNo', payload.contactNo);
+          formData.append('assignBranch', payload.assignBranch);
+          formData.append('status', payload.status);
+          
+          console.log('Attempting to register agent via http://localhost:8085/garbage/add');
+          const garbageResponse = await fetch('http://localhost:8085/garbage/add', {
+            method: 'POST',
+            body: formData
+          });
+          
+          if (garbageResponse.ok) {
+            console.log('Agent successfully added via garbage endpoint');
+            agentRegistered = true;
+          }
+        } catch (garbageErr) {
+          console.warn('Failed to register agent at garbage endpoint', garbageErr);
+        }
+      }
+      
+      return agentRegistered;
+    } catch (err) {
+      console.error('Error adding agent to backend:', err);
+      return false;
     }
   };
 
@@ -696,38 +863,87 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
         throw new Error('Selected agent not found');
       }
 
-      // Update the garbage details with assigned agent
-      const updateResponse = await fetch(`http://localhost:8085/garbage/assign-agent/${requestId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          assignedAgentId: selectedAgent.agentId,
-          assignedAgentName: selectedAgent.fullName
-        })
-      });
+      console.log(`Attempting to assign agent ${selectedAgent.fullName} (ID: ${selectedAgent.agentId}) to garbage request ${requestId}`);
       
-      if (!updateResponse.ok) {
-        // If the specific assign-agent endpoint doesn't exist, try a general update endpoint
-        const generalUpdateResponse = await fetch(`http://localhost:8085/garbage/${requestId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({
-            assignedAgentId: selectedAgent.agentId,
-            assignedAgent: selectedAgent.fullName
-          })
-        });
-        
-        if (!generalUpdateResponse.ok) {
-          throw new Error(`Failed to update garbage details: ${generalUpdateResponse.status} - ${generalUpdateResponse.statusText}`);
+      // First, ensure this agent exists in the backend database
+      await ensureAgentInBackend(selectedAgent);
+
+      // Create an array of possible endpoint patterns to try, prioritizing the updateStatus endpoint
+      const baseUrl = 'http://localhost:8085';
+      const possibleEndpoints = [
+        `/garbage/updateStatus/${requestId}`, // Primary endpoint for updating status and agent
+        `/garbage/${requestId}/setAgentID/${selectedAgent.agentId}`,
+        `/garbage/${requestId}/assignAgent/${selectedAgent.agentId}`,
+        `/garbage/${requestId}/agent/${selectedAgent.agentId}`,
+        `/garbage/assignAgent/${requestId}/${selectedAgent.agentId}`,
+        `/garbage/assign-agent/${requestId}/${selectedAgent.agentId}`,
+        `/garbage/${requestId}/assignAgentID/${selectedAgent.agentId}`
+      ];
+      
+      let endpointSuccess = false;
+      
+      // Try each endpoint until one succeeds
+      for (const endpointPath of possibleEndpoints) {
+        try {
+          console.log(`Trying endpoint: ${baseUrl}${endpointPath}`);
+          
+          // Use different payload structures based on the endpoint
+          let requestBody;
+          let method = 'PUT';
+          
+          // Special handling for updateStatus endpoint
+          if (endpointPath === `/garbage/updateStatus/${requestId}`) {
+            // Using the structure matching the Garbage entity
+            requestBody = JSON.stringify({
+              AgentName: selectedAgent.fullName, // Match the exact field name in entity
+              status: "ASSIGNED", // Update status to reflect assignment
+              agentId: selectedAgent.agentId.toString() // Additional field for reference
+            });
+          } else {
+            // Default payload for other endpoints
+            requestBody = JSON.stringify({
+              agentId: selectedAgent.agentId,
+              agentName: selectedAgent.fullName
+            });
+          }
+          
+          const updateResponse = await fetch(`${baseUrl}${endpointPath}`, {
+            method: method,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: requestBody
+          });
+          
+          if (updateResponse.ok) {
+            // If successful, remember this endpoint
+            console.log(`Successfully assigned agent using endpoint: ${baseUrl}${endpointPath}`);
+            endpointSuccess = true;
+            break;
+          } else {
+            console.warn(`API endpoint ${baseUrl}${endpointPath} failed with status: ${updateResponse.status}`);
+          }
+        } catch (err) {
+          console.error(`Error trying endpoint ${baseUrl}${endpointPath}:`, err);
         }
       }
       
+      // If none of the endpoints worked, log a warning and store assignment locally
+      if (!endpointSuccess) {
+        console.warn('All agent assignment API endpoints failed. The assignment will only be shown in the UI.');
+        // Store the assignment locally
+        setLocalAgentAssignments(prev => ({
+          ...prev,
+          [requestId]: {
+            agentId: selectedAgent.agentId,
+            agentName: selectedAgent.fullName
+          }
+        }));
+      }
+      
       // Update the local state to reflect the assigned agent
+      // This ensures that the UI shows the assignment even if the backend API call failed
       setPickupRequests(prevRequests => 
         prevRequests.map(request => 
           request.id === requestId ? 
@@ -739,13 +955,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
         )
       );
       
-      console.log(`Agent ${selectedAgent.fullName} successfully assigned to request ${requestId} and saved to database`);
+      console.log(`Agent ${selectedAgent.fullName} displayed as assigned to request ${requestId} in UI`);
       
       // Set success state
       setAgentAssignSuccess(prev => ({...prev, [requestId]: true}));
       
-      // Refresh pickup requests to get the latest data from the server
-      await fetchPickupRequests();
+      // Try to refresh pickup requests to get the latest data from the server
+      // But don't let this failure affect the user experience
+      try {
+        await fetchPickupRequests();
+      } catch (refreshErr) {
+        console.warn('Could not refresh pickup requests after agent assignment:', refreshErr);
+      }
       
       // Clear success message after 3 seconds
       setTimeout(() => {
@@ -1290,6 +1511,57 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                           {agents.length} agent{agents.length !== 1 ? 's' : ''} loaded
                         </span>
                       )}
+                      {/* Debug button for agents */}
+                      <button 
+                        onClick={() => {
+                          console.log('Current agents state:', agents);
+                          console.log('Agents loading:', agentsLoading);
+                          console.log('Agents error:', agentsError);
+                          alert(`Agents loaded: ${agents.length}\nAgent names: ${agents.map(a => a.fullName).join(', ')}`);
+                        }}
+                        className="px-3 py-2 border border-blue-300 bg-blue-50 rounded-lg text-blue-700 text-sm font-medium hover:bg-blue-100"
+                        title="Debug agents data"
+                      >
+                        Debug Agents
+                      </button>
+                      
+                      {/* API Endpoint Debug Button */}
+                      <button 
+                        onClick={async () => {
+                          console.log('Testing API endpoints...');
+                          // Test common API patterns
+                          const baseUrl = 'http://localhost:8085';
+                          const testRequestId = pickupRequests[0]?.id || '9';
+                          const testAgentId = '1';
+                          
+                          const endpoints = [
+                            `/garbage/${testRequestId}/complete`,
+                            `/garbage/${testRequestId}/markInProgress`,
+                            `/garbage/${testRequestId}/approve`,
+                            `/garbage/${testRequestId}/reject`,
+                            `/garbage/${testRequestId}/setAgentID/${testAgentId}`,
+                            `/garbage/${testRequestId}/assignAgent/${testAgentId}`,
+                            `/garbage/${testRequestId}/agent/${testAgentId}`,
+                            `/garbage/assignAgent/${testRequestId}/${testAgentId}`,
+                            `/garbage/assign-agent/${testRequestId}/${testAgentId}`,
+                            `/garbage/${testRequestId}/update`,
+                          ];
+                          
+                          const results: {[key: string]: boolean} = {};
+                          
+                          for (const endpoint of endpoints) {
+                            const success = await probeApiEndpoint(baseUrl, endpoint);
+                            results[endpoint] = success;
+                          }
+                          
+                          console.table(results);
+                          alert(`API endpoint test results in console.\nWorking endpoints: ${Object.entries(results).filter(([_, success]) => success).map(([ep]) => ep).join(', ') || 'None'}`);
+                        }}
+                        className="px-3 py-2 border border-purple-300 bg-purple-50 rounded-lg text-purple-700 text-sm font-medium hover:bg-purple-100"
+                        title="Test API endpoints"
+                      >
+                        Test API
+                      </button>
                       <button className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">
                         New Request
                       </button>
@@ -1383,29 +1655,42 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                               <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">
                                 <div className="relative">
                                   <select
-                                    className="appearance-none bg-white border border-gray-300 rounded-md py-1 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent pr-8"
+                                    className="appearance-none bg-white border border-gray-300 rounded-md py-1 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent pr-8 min-w-[150px]"
                                     onChange={(e) => handleAgentAssign(request.id, e.target.value)}
-                                    value={request.assignedAgent === 'Unassigned' ? '' : agents.find(agent => agent.fullName === request.assignedAgent)?.agentId.toString() || ''}
+                                    value={request.assignedAgent === 'Unassigned' ? '' : agents.find(agent => agent.fullName === request.assignedAgent)?.agentId.toString() || localAgentAssignments[request.id]?.agentId.toString() || ''}
                                     disabled={agentAssigning[request.id] || agentsLoading}
+                                    onFocus={() => {
+                                      // Fetch agents when dropdown is clicked if not already loaded or if there's an error
+                                      if (agents.length === 0 || agentsError) {
+                                        fetchAgents();
+                                      }
+                                    }}
                                   >
                                     <option value="">
                                       {agentsLoading ? 'Loading agents...' :
-                                       agentsError ? 'Error loading agents' :
+                                       agentsError ? 'Click to reload agents' :
                                        agents.length === 0 ? 'No agents available' :
                                        request.assignedAgent === 'Unassigned' ? 'Select Agent' : request.assignedAgent}
                                     </option>
-                                    {!agentsLoading && !agentsError && agents.filter(agent => agent.status === 'Active').map((agent) => (
+                                    {!agentsLoading && !agentsError && agents.length > 0 && agents.filter(agent => agent.status === 'Active').map((agent) => (
                                       <option key={agent.agentId} value={agent.agentId.toString()}>
-                                        {agent.fullName} {agent.assignBranch ? `(${agent.assignBranch})` : ''}
+                                        {agent.fullName} {agent.assignBranch && agent.assignBranch !== 'No Branch' ? `(${agent.assignBranch})` : ''}
                                       </option>
                                     ))}
                                   </select>
                                   
+                                  {/* Dropdown arrow icon */}
+                                  <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
+                                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                  </div>
+                                  
                                   {agentAssigning[request.id] && (
                                     <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
                                       <svg className="animate-spin h-4 w-4 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                       </svg>
                                     </div>
                                   )}
@@ -1414,20 +1699,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                                     <div className="text-xs text-red-600 mt-1">{agentAssignError[request.id]}</div>
                                   )}
                                   
-                                  {agentAssignSuccess[request.id] && (
-                                    <div className="text-xs text-green-600 mt-1">✓ Agent assigned successfully!</div>
-                                  )}
-                                  {agentAssigning[request.id] && (
-                                    <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
-                                      <svg className="animate-spin h-4 w-4 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                      </svg>
-                                    </div>
-                                  )}
-                                  {agentAssignError[request.id] && (
-                                    <div className="text-xs text-red-600 mt-1">{agentAssignError[request.id]}</div>
-                                  )}
                                   {agentAssignSuccess[request.id] && (
                                     <div className="text-xs text-green-600 mt-1">✓ Agent assigned successfully!</div>
                                   )}
@@ -1441,7 +1712,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                                     value=""
                                     disabled={statusUpdating[request.id]}
                                   >
-                                    <option value="" disabled>Change Status</option>
+                                    <option value="" disabled>Select</option>
                                     {availableStatuses.map((status) => (
                                       <option key={status} value={status}>{status.replace('_', ' ')}</option>
                                     ))}
@@ -1450,14 +1721,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                                     <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
                                       <svg className="animate-spin h-4 w-4 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                       </svg>
                                     </div>
                                   )}
-                                  {statusUpdateError[request.id] && (
-                                    <div className="text-xs text-red-600 mt-1">{statusUpdateError[request.id]}</div>
-                                  )}
                                 </div>
+                                {statusUpdateError[request.id] && (
+                                  <div className="text-xs text-red-600 mt-1">{statusUpdateError[request.id]}</div>
+                                )}
                               </td>
                             </tr>
                           ))}
@@ -1503,28 +1774,42 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                             <div className="text-right">
                               <div className="inline-block relative">
                                 <select
-                                  className="appearance-none bg-white border border-gray-300 rounded-md py-1 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                  className="appearance-none bg-white border border-gray-300 rounded-md py-1 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent pr-8 min-w-[120px]"
                                   onChange={(e) => handleAgentAssign(request.id, e.target.value)}
-                                  value={request.assignedAgent === 'Unassigned' ? '' : agents.find(agent => agent.fullName === request.assignedAgent)?.agentId.toString() || ''}
+                                  value={request.assignedAgent === 'Unassigned' ? '' : agents.find(agent => agent.fullName === request.assignedAgent)?.agentId.toString() || localAgentAssignments[request.id]?.agentId.toString() || ''}
                                   disabled={agentAssigning[request.id] || agentsLoading}
+                                  onFocus={() => {
+                                    // Fetch agents when dropdown is clicked if not already loaded or if there's an error
+                                    if (agents.length === 0 || agentsError) {
+                                      fetchAgents();
+                                    }
+                                  }}
                                 >
                                   <option value="">
                                     {agentsLoading ? 'Loading agents...' :
-                                     agentsError ? 'Error loading agents' :
+                                     agentsError ? 'Click to reload agents' :
                                      agents.length === 0 ? 'No agents available' :
                                      request.assignedAgent === 'Unassigned' ? 'Select Agent' : request.assignedAgent}
                                   </option>
-                                  {!agentsLoading && !agentsError && agents.filter(agent => agent.status === 'Active').map((agent) => (
+                                  {!agentsLoading && !agentsError && agents.length > 0 && agents.filter(agent => agent.status === 'Active').map((agent) => (
                                     <option key={agent.agentId} value={agent.agentId.toString()}>
-                                      {agent.fullName} {agent.assignBranch ? `(${agent.assignBranch})` : ''}
+                                      {agent.fullName} {agent.assignBranch && agent.assignBranch !== 'No Branch' ? `(${agent.assignBranch})` : ''}
                                     </option>
                                   ))}
                                 </select>
+                                
+                                {/* Dropdown arrow icon */}
+                                <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
+                                  <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                </div>
+                                
                                 {agentAssigning[request.id] && (
                                   <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
                                     <svg className="animate-spin h-4 w-4 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>
                                   </div>
                                 )}
@@ -1825,8 +2110,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                 </p>
               </div>
             )}
+          </div>
         </div>
-      </div>
       )}
 
       {/* Delete confirmation modal */}

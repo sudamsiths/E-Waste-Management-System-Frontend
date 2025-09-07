@@ -37,10 +37,12 @@ interface FormData {
   itemTitle: string;
   pickupLocation: string;
   category: EWasteCategory | '';
-  submissionDate: Date ;
+  submissionDate: Date;
   estimatedWeight: string;
   itemImage: File | null;
   description: string;
+  assignedAgentId?: string; // Optional assigned agent ID
+  assignedAgentName?: string; // Optional assigned agent name
 }
 
 const ClientRequest: React.FC = () => {
@@ -52,16 +54,180 @@ const ClientRequest: React.FC = () => {
     submissionDate: new Date(),
     estimatedWeight: '',
     itemImage: null,
-    description: ''
+    description: '',
+    assignedAgentId: undefined,
+    assignedAgentName: undefined
   });
   
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [showAgentDropdown, setShowAgentDropdown] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [rewardPoints, setRewardPoints] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false); // Track submission state
+  const [isAdmin, setIsAdmin] = useState(false); // Track if user is admin
+  const [availableAgents, setAvailableAgents] = useState<Array<{agentId: string, fullName: string}>>([]);
+  const [agentsLoading, setAgentsLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null); // Track submission errors
   const [submitSuccess, setSubmitSuccess] = useState(false); // Track submission success
+  
+  // Additional states for admin garbage management
+  const [existingGarbageItems, setExistingGarbageItems] = useState<Array<any>>([]);
+  const [selectedGarbageId, setSelectedGarbageId] = useState<string>('');
+  const [showGarbageSelector, setShowGarbageSelector] = useState(false);
+  const [garbageUpdateLoading, setGarbageUpdateLoading] = useState(false);
+  const [garbageUpdateSuccess, setGarbageUpdateSuccess] = useState(false);
 
+  // Check if user is admin and fetch agents on component mount
+  useEffect(() => {
+    // Check user role from localStorage
+    const userRole = localStorage.getItem('userRole');
+    const isUserAdmin = userRole === 'ADMIN';
+    setIsAdmin(isUserAdmin);
+    
+    // If admin, fetch available agents and existing garbage items
+    if (isUserAdmin) {
+      fetchAvailableAgents();
+      fetchExistingGarbageItems();
+    }
+  }, []);
+
+  // Function to fetch existing garbage items
+  const fetchExistingGarbageItems = async () => {
+    try {
+      // Try multiple potential endpoints
+      let response;
+      
+      try {
+        response = await axios.get('http://localhost:8085/garbage/latest');
+      } catch (err) {
+        console.log('First garbage endpoint failed, trying alternative');
+        try {
+          response = await axios.get('http://localhost:8085/garbage/all');
+        } catch (err2) {
+          console.log('Second garbage endpoint failed, trying last resort');
+          response = await axios.get('http://localhost:8085/garbage');
+        }
+      }
+      
+      if (response?.data) {
+        // Handle different response structures
+        let items = [];
+        
+        if (Array.isArray(response.data)) {
+          items = response.data;
+        } else if (response.data.content) {
+          items = response.data.content;
+        } else if (response.data.items) {
+          items = response.data.items;
+        } else if (typeof response.data === 'object') {
+          // If it's a single object, put it in an array
+          items = [response.data];
+        }
+        
+        // Filter out items that already have agents assigned if needed
+        // const unassignedItems = items.filter(item => !item.AgentName && !item.agentName);
+        
+        setExistingGarbageItems(items);
+        console.log('Fetched existing garbage items:', items);
+      }
+    } catch (error) {
+      console.error('Failed to fetch existing garbage items:', error);
+    }
+  };
+  
+  // Handle garbage item selection for agent assignment
+  const handleGarbageSelect = (id: string) => {
+    setSelectedGarbageId(id);
+    setShowGarbageSelector(false);
+  };
+  
+  // Update existing garbage with agent
+  const handleUpdateGarbageAgent = async () => {
+    if (!selectedGarbageId || !formData.assignedAgentId || !formData.assignedAgentName) {
+      setSubmitError('Please select both a garbage item and an agent');
+      return;
+    }
+    
+    setGarbageUpdateLoading(true);
+    
+    try {
+      const success = await updateGarbageWithAgent(
+        selectedGarbageId, 
+        {
+          agentId: formData.assignedAgentId, 
+          fullName: formData.assignedAgentName
+        }
+      );
+      
+      if (success) {
+        setGarbageUpdateSuccess(true);
+        alert(`Agent ${formData.assignedAgentName} successfully assigned to garbage item #${selectedGarbageId}`);
+        // Refresh the garbage list
+        fetchExistingGarbageItems();
+      } else {
+        setSubmitError('Failed to update garbage with agent assignment');
+      }
+    } catch (error) {
+      console.error('Error in agent assignment:', error);
+      setSubmitError('An error occurred during agent assignment');
+    } finally {
+      setGarbageUpdateLoading(false);
+    }
+  };
+
+  // Function to fetch available agents
+  const fetchAvailableAgents = async () => {
+    try {
+      setAgentsLoading(true);
+      
+      // Try multiple potential endpoints to get agents
+      let response;
+      try {
+        response = await axios.get('http://localhost:8082/agent/GetAll/AgentsName');
+      } catch (err) {
+        console.log('First agent endpoint failed, trying alternative');
+        try {
+          response = await axios.get('http://localhost:8082/agent/all');
+        } catch (err2) {
+          console.log('Second agent endpoint failed, trying last resort');
+          response = await axios.get('http://localhost:8082/agent');
+        }
+      }
+      
+      if (response?.data) {
+        let transformedAgents: Array<{agentId: string, fullName: string}> = [];
+        
+        if (Array.isArray(response.data)) {
+          transformedAgents = response.data.map((agent: any) => {
+            // Handle different possible field structures
+            const id = agent.agentId || agent.id || '';
+            let name = agent.fullName;
+            
+            if (!name && (agent.firstName || agent.lastName)) {
+              name = `${agent.firstName || ''} ${agent.lastName || ''}`.trim();
+            } else if (!name && agent.name) {
+              name = agent.name;
+            } else if (!name) {
+              name = `Agent ${id}`;
+            }
+            
+            return {
+              agentId: id.toString(),
+              fullName: name
+            };
+          });
+        }
+        
+        setAvailableAgents(transformedAgents);
+        console.log('Fetched agents:', transformedAgents);
+      }
+    } catch (error) {
+      console.error('Failed to fetch agents:', error);
+    } finally {
+      setAgentsLoading(false);
+    }
+  };
+  
   // Calculate reward points when category or weight changes
   useEffect(() => {
     calculateRewardPoints();
@@ -109,6 +275,59 @@ const ClientRequest: React.FC = () => {
     }));
     setShowCategoryDropdown(false);
   };
+  
+  const handleAgentSelect = (agent: {agentId: string, fullName: string}) => {
+    // Make sure we have valid data before setting
+    if (!agent.agentId || !agent.fullName) {
+      console.error('Invalid agent data:', agent);
+      return;
+    }
+    
+    console.log('Selected agent:', agent);
+    
+    setFormData(prev => ({
+      ...prev,
+      assignedAgentId: agent.agentId,
+      assignedAgentName: agent.fullName
+    }));
+    setShowAgentDropdown(false);
+  };
+  
+  // Function to update existing garbage request with agent assignment
+  const updateGarbageWithAgent = async (garbageId: string, agent: {agentId: string, fullName: string}) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      
+      // Create payload matching the entity structure
+      const updatePayload = {
+        AgentName: agent.fullName, // Exact field name from entity
+        agentId: agent.agentId,
+        status: "ASSIGNED" // Update status
+      };
+      
+      console.log(`Updating garbage ID ${garbageId} with agent ${agent.fullName}`, updatePayload);
+      
+      // Make PUT request to update the garbage with agent
+      const response = await axios.put(
+        `http://localhost:8085/garbage/updateStatus/${garbageId}`,
+        updatePayload,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : '',
+          }
+        }
+      );
+      
+      console.log('Update response:', response.data);
+      
+      console.log('Agent assignment update successful:', response.data);
+      return true;
+    } catch (error) {
+      console.error('Failed to update garbage with agent assignment:', error);
+      return false;
+    }
+  };
 
   const handleFileChange = (file: File) => {
     if (file && file.size <= 5 * 1024 * 1024) { // 5MB limit
@@ -155,7 +374,9 @@ const ClientRequest: React.FC = () => {
       submissionDate: new Date(),
       estimatedWeight: '',
       itemImage: null,
-      description: ''
+      description: '',
+      assignedAgentId: undefined,
+      assignedAgentName: undefined
     });
     setRewardPoints(0);
   };
@@ -191,6 +412,17 @@ const ClientRequest: React.FC = () => {
       
       // Add default status as "PENDING"
       submitFormData.append('status', 'PENDING');
+      
+      // Add agent assignment information if available - using the exact field name from entity
+      if (formData.assignedAgentId) {
+        submitFormData.append('agentId', formData.assignedAgentId);
+      }
+      if (formData.assignedAgentName) {
+        submitFormData.append('AgentName', formData.assignedAgentName); // Exact field name from entity
+        // Include alternative field names for compatibility
+        submitFormData.append('assignedAgentName', formData.assignedAgentName);
+        submitFormData.append('assignedAgent', formData.assignedAgentName);
+      }
       
       // Add submission date in multiple formats to ensure backend compatibility
       const currentDate = new Date();
@@ -239,6 +471,12 @@ const ClientRequest: React.FC = () => {
       console.log('- SubmissionDate (ISO):', submissionDate);
       console.log('- SubmissionDate (Local):', submissionDateLocal);
       
+      // Log agent assignment information if available
+      if (formData.assignedAgentId && formData.assignedAgentName) {
+        console.log('- Assigned Agent ID:', formData.assignedAgentId);
+        console.log('- Assigned Agent Name:', formData.assignedAgentName);
+      }
+      
       // Get the authentication token
       const token = localStorage.getItem('authToken');
       
@@ -261,7 +499,14 @@ const ClientRequest: React.FC = () => {
       
       // Show success message with username and formatted submission date
       const formattedDate = new Date(submissionDate).toLocaleString();
-      alert(`Request submitted successfully by ${userName} on ${formattedDate}! You've earned ${rewardPoints} points.`);
+      let successMessage = `Request submitted successfully by ${userName} on ${formattedDate}! You've earned ${rewardPoints} points.`;
+      
+      // Add agent assignment information to success message if available
+      if (formData.assignedAgentName) {
+        successMessage += `\nAgent ${formData.assignedAgentName} has been assigned to this request.`;
+      }
+      
+      alert(successMessage);
       
       // Reset form
       handleReset();
@@ -424,6 +669,146 @@ const ClientRequest: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Admin Only: Agent Assignment */}
+              {isAdmin && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="block text-[#2E2E2E] text-sm font-bold">
+                      Assign Agent
+                    </label>
+                    <div className="relative">
+                      <div
+                        className="h-12 sm:h-14 px-4 sm:px-5 border border-[#E1E5E9] rounded-xl sm:rounded-2xl bg-[#F8F9FA] flex items-center justify-between cursor-pointer transition-all hover:border-[#4CAF50] focus-within:border-[#4CAF50] focus-within:ring-2 focus-within:ring-[#4CAF50]/20"
+                        onClick={() => setShowAgentDropdown(!showAgentDropdown)}
+                      >
+                        <span className={`text-sm sm:text-base ${formData.assignedAgentName ? 'text-[#2E2E2E]' : 'text-[#999]'}`}>
+                          {formData.assignedAgentName ? formData.assignedAgentName : 'Select agent'}
+                        </span>
+                        <div className="w-7 h-4 bg-[#4CAF50] rounded flex items-center justify-center">
+                          <svg width="12" height="8" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M1 1L6 6L11 1" stroke="white" strokeWidth="2"/>
+                          </svg>
+                        </div>
+                      </div>
+                      {showAgentDropdown && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#E1E5E9] rounded-xl sm:rounded-2xl shadow-lg z-20 py-2 max-h-60 overflow-y-auto">
+                          {agentsLoading ? (
+                            <div className="px-4 sm:px-5 py-3 text-[#999] text-sm sm:text-base">
+                              Loading agents...
+                            </div>
+                          ) : availableAgents && availableAgents.length > 0 ? (
+                            availableAgents.map((agent, index) => (
+                              <div
+                                key={index}
+                                className="px-4 sm:px-5 py-3 text-[#2E2E2E] text-sm sm:text-base cursor-pointer hover:bg-gray-50 transition-colors"
+                                onClick={() => handleAgentSelect(agent)}
+                              >
+                                {agent.fullName || `Agent ${agent.agentId}`}
+                              </div>
+                            ))
+                          ) : (
+                            <div className="px-4 sm:px-5 py-3 text-[#999] text-sm sm:text-base">
+                              No agents available
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-2 flex items-center">
+                    {formData.assignedAgentName && (
+                      <div className="px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-green-700 text-sm">Agent {formData.assignedAgentName} will be assigned to this request</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {/* Admin Only: Existing Garbage Item Management */}
+              {isAdmin && (
+                <div className="mt-6 bg-blue-50 rounded-xl p-4 border border-blue-200">
+                  <h3 className="text-blue-800 font-bold mb-3">Assign Agent to Existing Garbage Item</h3>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="block text-[#2E2E2E] text-sm font-bold">
+                        Select Existing Garbage Item
+                      </label>
+                      <div className="relative">
+                        <div
+                          className="h-12 sm:h-14 px-4 sm:px-5 border border-[#E1E5E9] rounded-xl sm:rounded-2xl bg-[#F8F9FA] flex items-center justify-between cursor-pointer transition-all hover:border-[#4CAF50] focus-within:border-[#4CAF50] focus-within:ring-2 focus-within:ring-[#4CAF50]/20"
+                          onClick={() => setShowGarbageSelector(!showGarbageSelector)}
+                        >
+                          <span className={`text-sm sm:text-base ${selectedGarbageId ? 'text-[#2E2E2E]' : 'text-[#999]'}`}>
+                            {selectedGarbageId ? `Garbage Item #${selectedGarbageId}` : 'Select a garbage item'}
+                          </span>
+                          <div className="w-7 h-4 bg-blue-500 rounded flex items-center justify-center">
+                            <svg width="12" height="8" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M1 1L6 6L11 1" stroke="white" strokeWidth="2"/>
+                            </svg>
+                          </div>
+                        </div>
+                        {showGarbageSelector && (
+                          <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#E1E5E9] rounded-xl sm:rounded-2xl shadow-lg z-20 py-2 max-h-60 overflow-y-auto">
+                            {existingGarbageItems && existingGarbageItems.length > 0 ? (
+                              existingGarbageItems.map((item, index) => {
+                                // Handle potential different field names for id and title
+                                const itemId = item.id || item.garbageId || item.requestId || index;
+                                const itemTitle = item.title || item.itemTitle || 'Unnamed';
+                                const itemStatus = item.status || 'Unknown Status';
+                                
+                                return (
+                                  <div
+                                    key={index}
+                                    className="px-4 sm:px-5 py-3 text-[#2E2E2E] text-sm sm:text-base cursor-pointer hover:bg-gray-50 transition-colors"
+                                    onClick={() => handleGarbageSelect(itemId)}
+                                  >
+                                    #{itemId} - {itemTitle} ({itemStatus})
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <div className="px-4 sm:px-5 py-3 text-[#999] text-sm sm:text-base">
+                                No garbage items available
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-end">
+                      <button
+                        type="button"
+                        onClick={handleUpdateGarbageAgent}
+                        disabled={!selectedGarbageId || !formData.assignedAgentName || garbageUpdateLoading}
+                        className="h-12 sm:h-14 px-6 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 rounded-xl sm:rounded-2xl text-white text-sm sm:text-base font-bold flex items-center justify-center transition-colors"
+                      >
+                        {garbageUpdateLoading ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Updating...
+                          </>
+                        ) : (
+                          <>Update Garbage with Agent</>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {garbageUpdateSuccess && (
+                    <div className="mt-4 p-3 bg-green-100 border border-green-300 rounded-lg">
+                      <p className="text-green-700 text-sm">
+                        Agent assignment updated successfully!
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Third row - Image Upload and Reward Points */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
