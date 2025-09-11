@@ -298,18 +298,16 @@ const ClientRequest: React.FC = () => {
     try {
       const token = localStorage.getItem('authToken');
       
-      // Create payload matching the entity structure
+      // Create payload with only AgentName as required
       const updatePayload = {
-        AgentName: agent.fullName, // Exact field name from entity
-        agentId: agent.agentId,
-        status: "ASSIGNED" // Update status
+        AgentName: agent.fullName
       };
       
       console.log(`Updating garbage ID ${garbageId} with agent ${agent.fullName}`, updatePayload);
       
-      // Make PUT request to update the garbage with agent
+      // Make PUT request to the assignAgent endpoint
       const response = await axios.put(
-        `http://localhost:8085/garbage/updateStatus/${garbageId}`,
+        `http://localhost:8085/garbage/assignAgent/${garbageId}`,
         updatePayload,
         {
           headers: {
@@ -318,8 +316,6 @@ const ClientRequest: React.FC = () => {
           }
         }
       );
-      
-      console.log('Update response:', response.data);
       
       console.log('Agent assignment update successful:', response.data);
       return true;

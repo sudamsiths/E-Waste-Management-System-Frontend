@@ -67,26 +67,6 @@ interface Agent {
   joinedDate?: string;
 }
 
-// Helper function to probe API endpoints - useful for debugging
-const probeApiEndpoint = async (baseUrl: string, endpointPath: string): Promise<boolean> => {
-  try {
-    console.log(`Probing API endpoint: ${baseUrl}${endpointPath}`);
-    const response = await fetch(`${baseUrl}${endpointPath}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      }
-    });
-    const success = response.ok;
-    console.log(`API endpoint ${baseUrl}${endpointPath} is ${success ? 'available' : 'not available'} (${response.status})`);
-    return success;
-  } catch (err) {
-    console.error(`Error probing API endpoint ${baseUrl}${endpointPath}:`, err);
-    return false;
-  }
-};
-
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard' }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -126,8 +106,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
   const [agentAssigning, setAgentAssigning] = useState<{[key: string]: boolean}>({});
   const [agentAssignError, setAgentAssignError] = useState<{[key: string]: string}>({});
   const [agentAssignSuccess, setAgentAssignSuccess] = useState<{[key: string]: boolean}>({});
-  // Local storage for agent assignments if backend fails
-  const [localAgentAssignments, setLocalAgentAssignments] = useState<{[requestId: string]: {agentId: number, agentName: string}}>({});
   
   // Calculate total pages and paginated requests
   const totalRequestPages = useMemo(() => Math.ceil(pickupRequests.length / requestsPerPage), [pickupRequests, requestsPerPage]);
@@ -867,82 +845,34 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
       // First, ensure this agent exists in the backend database
       await ensureAgentInBackend(selectedAgent);
 
-      // Create an array of possible endpoint patterns to try, prioritizing the updateStatus endpoint
+      // Use the specific assignAgent endpoint
       const baseUrl = 'http://localhost:8085';
-      const possibleEndpoints = [
-        `/garbage/updateStatus/${requestId}`, // Primary endpoint for updating status and agent
-        `/garbage/${requestId}/setAgentID/${selectedAgent.agentId}`,
-        `/garbage/${requestId}/assignAgent/${selectedAgent.agentId}`,
-        `/garbage/${requestId}/agent/${selectedAgent.agentId}`,
-        `/garbage/assignAgent/${requestId}/${selectedAgent.agentId}`,
-        `/garbage/assign-agent/${requestId}/${selectedAgent.agentId}`,
-        `/garbage/${requestId}/assignAgentID/${selectedAgent.agentId}`
-      ];
+      const endpointPath = `/garbage/assignAgent/${requestId}`;
       
-      let endpointSuccess = false;
+      console.log(`Assigning agent using endpoint: ${baseUrl}${endpointPath}`);
       
-      // Try each endpoint until one succeeds
-      for (const endpointPath of possibleEndpoints) {
-        try {
-          console.log(`Trying endpoint: ${baseUrl}${endpointPath}`);
-          
-          // Use different payload structures based on the endpoint
-          let requestBody;
-          let method = 'PUT';
-          
-          // Special handling for updateStatus endpoint
-          if (endpointPath === `/garbage/updateStatus/${requestId}`) {
-            // Using the structure matching the Garbage entity
-            requestBody = JSON.stringify({
-              AgentName: selectedAgent.fullName, // Match the exact field name in entity
-              status: "ASSIGNED", // Update status to reflect assignment
-              agentId: selectedAgent.agentId.toString() // Additional field for reference
-            });
-          } else {
-            // Default payload for other endpoints
-            requestBody = JSON.stringify({
-              agentId: selectedAgent.agentId,
-              agentName: selectedAgent.fullName
-            });
-          }
-          
-          const updateResponse = await fetch(`${baseUrl}${endpointPath}`, {
-            method: method,
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            body: requestBody
-          });
-          
-          if (updateResponse.ok) {
-            // If successful, remember this endpoint
-            console.log(`Successfully assigned agent using endpoint: ${baseUrl}${endpointPath}`);
-            endpointSuccess = true;
-            break;
-          } else {
-            console.warn(`API endpoint ${baseUrl}${endpointPath} failed with status: ${updateResponse.status}`);
-          }
-        } catch (err) {
-          console.error(`Error trying endpoint ${baseUrl}${endpointPath}:`, err);
-        }
+      // Prepare the payload with AgentName only
+      const requestBody = JSON.stringify({
+        AgentName: selectedAgent.fullName
+      });
+      
+      const updateResponse = await fetch(`${baseUrl}${endpointPath}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: requestBody
+      });
+      
+      if (!updateResponse.ok) {
+        const errorText = await updateResponse.text();
+        throw new Error(`Failed to assign agent. Status: ${updateResponse.status}, Error: ${errorText}`);
       }
       
-      // If none of the endpoints worked, log a warning and store assignment locally
-      if (!endpointSuccess) {
-        console.warn('All agent assignment API endpoints failed. The assignment will only be shown in the UI.');
-        // Store the assignment locally
-        setLocalAgentAssignments(prev => ({
-          ...prev,
-          [requestId]: {
-            agentId: selectedAgent.agentId,
-            agentName: selectedAgent.fullName
-          }
-        }));
-      }
+      console.log(`Successfully assigned agent ${selectedAgent.fullName} to request ${requestId}`);
       
       // Update the local state to reflect the assigned agent
-      // This ensures that the UI shows the assignment even if the backend API call failed
       setPickupRequests(prevRequests => 
         prevRequests.map(request => 
           request.id === requestId ? 
@@ -954,13 +884,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
         )
       );
       
-      console.log(`Agent ${selectedAgent.fullName} displayed as assigned to request ${requestId} in UI`);
+      console.log(`Agent ${selectedAgent.fullName} assigned to request ${requestId} in UI`);
       
       // Set success state
       setAgentAssignSuccess(prev => ({...prev, [requestId]: true}));
       
       // Try to refresh pickup requests to get the latest data from the server
-      // But don't let this failure affect the user experience
       try {
         await fetchPickupRequests();
       } catch (refreshErr) {
@@ -1601,7 +1530,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                                   <select
                                     className="appearance-none bg-white border border-gray-300 rounded-md py-1 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent pr-8 min-w-[150px]"
                                     onChange={(e) => handleAgentAssign(request.id, e.target.value)}
-                                    value={request.assignedAgent === 'Unassigned' ? '' : agents.find(agent => agent.fullName === request.assignedAgent)?.agentId.toString() || localAgentAssignments[request.id]?.agentId.toString() || ''}
+                                    value={request.assignedAgent === 'Unassigned' ? '' : agents.find(agent => agent.fullName === request.assignedAgent)?.agentId.toString() || ''}
                                     disabled={agentAssigning[request.id] || agentsLoading}
                                     onFocus={() => {
                                       // Fetch agents when dropdown is clicked if not already loaded or if there's an error
@@ -1720,7 +1649,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                                 <select
                                   className="appearance-none bg-white border border-gray-300 rounded-md py-1 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent pr-8 min-w-[120px]"
                                   onChange={(e) => handleAgentAssign(request.id, e.target.value)}
-                                  value={request.assignedAgent === 'Unassigned' ? '' : agents.find(agent => agent.fullName === request.assignedAgent)?.agentId.toString() || localAgentAssignments[request.id]?.agentId.toString() || ''}
+                                  value={request.assignedAgent === 'Unassigned' ? '' : agents.find(agent => agent.fullName === request.assignedAgent)?.agentId.toString() || ''}
                                   disabled={agentAssigning[request.id] || agentsLoading}
                                   onFocus={() => {
                                     // Fetch agents when dropdown is clicked if not already loaded or if there's an error
