@@ -31,7 +31,6 @@ const Login: React.FC = () => {
   const [registrationSuccess, setRegistrationSuccess] = useState<boolean>(false);
   const [registeredUsername, setRegisteredUsername] = useState<string | null>(null);
   const [loginSuccess, setLoginSuccess] = useState<boolean>(false);
-  const [loginAnimation, setLoginAnimation] = useState<boolean>(false);
   const [logoutSuccess, setLogoutSuccess] = useState<boolean>(false);
 
   useEffect(() => {
@@ -57,11 +56,6 @@ const Login: React.FC = () => {
         localStorage.removeItem("registeredUsername");
       }, 5000);
     }
-
-    // Set login animation to true after a brief delay to allow the component to render
-    setTimeout(() => {
-      setLoginAnimation(true);
-    }, 100);
     
     // Show login success message if coming back to login page
     if (loginSuccessFlag === "true") {

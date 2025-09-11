@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Search, Download, Plus, MoreHorizontal, ArrowUpDown, RefreshCcw, AlertCircle, Edit, Trash } from 'lucide-react';
+import { ChevronDown, Search, Download, Plus, ArrowUpDown, RefreshCcw, AlertCircle, Edit, Trash } from 'lucide-react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 

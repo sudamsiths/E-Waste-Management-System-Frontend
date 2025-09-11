@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import './AdminDashboard.css';
 import ManageUserProfile from './ManageUserProfile';
-import axios from 'axios';
 import ManageAgentProfile from './ManageAgentProfile';
 import AddAgent from './AddAgent';
 import CustomerAccountSettings from '../Clientinterface/CustomerAccountSettings';
@@ -1506,62 +1505,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
                           <span>Retry Agents</span>
                         </button>
                       )}
-                      {!agentsError && agents.length > 0 && (
-                        <span className="px-3 py-2 bg-green-50 text-green-700 text-sm rounded-lg">
-                          {agents.length} agent{agents.length !== 1 ? 's' : ''} loaded
-                        </span>
-                      )}
-                      {/* Debug button for agents */}
-                      <button 
-                        onClick={() => {
-                          console.log('Current agents state:', agents);
-                          console.log('Agents loading:', agentsLoading);
-                          console.log('Agents error:', agentsError);
-                          alert(`Agents loaded: ${agents.length}\nAgent names: ${agents.map(a => a.fullName).join(', ')}`);
-                        }}
-                        className="px-3 py-2 border border-blue-300 bg-blue-50 rounded-lg text-blue-700 text-sm font-medium hover:bg-blue-100"
-                        title="Debug agents data"
-                      >
-                        Debug Agents
-                      </button>
                       
-                      {/* API Endpoint Debug Button */}
-                      <button 
-                        onClick={async () => {
-                          console.log('Testing API endpoints...');
-                          // Test common API patterns
-                          const baseUrl = 'http://localhost:8085';
-                          const testRequestId = pickupRequests[0]?.id || '9';
-                          const testAgentId = '1';
-                          
-                          const endpoints = [
-                            `/garbage/${testRequestId}/complete`,
-                            `/garbage/${testRequestId}/markInProgress`,
-                            `/garbage/${testRequestId}/approve`,
-                            `/garbage/${testRequestId}/reject`,
-                            `/garbage/${testRequestId}/setAgentID/${testAgentId}`,
-                            `/garbage/${testRequestId}/assignAgent/${testAgentId}`,
-                            `/garbage/${testRequestId}/agent/${testAgentId}`,
-                            `/garbage/assignAgent/${testRequestId}/${testAgentId}`,
-                            `/garbage/assign-agent/${testRequestId}/${testAgentId}`,
-                            `/garbage/${testRequestId}/update`,
-                          ];
-                          
-                          const results: {[key: string]: boolean} = {};
-                          
-                          for (const endpoint of endpoints) {
-                            const success = await probeApiEndpoint(baseUrl, endpoint);
-                            results[endpoint] = success;
-                          }
-                          
-                          console.table(results);
-                          alert(`API endpoint test results in console.\nWorking endpoints: ${Object.entries(results).filter(([_, success]) => success).map(([ep]) => ep).join(', ') || 'None'}`);
-                        }}
-                        className="px-3 py-2 border border-purple-300 bg-purple-50 rounded-lg text-purple-700 text-sm font-medium hover:bg-purple-100"
-                        title="Test API endpoints"
-                      >
-                        Test API
-                      </button>
                       <button className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">
                         New Request
                       </button>

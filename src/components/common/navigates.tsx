@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import ClientInterface02 from "../Clientinterface/ClientInterface02";
 import ClientInterface01 from "../Clientinterface/Clientinterface01";
@@ -6,9 +6,8 @@ import Clientinterface03 from "../Clientinterface/Clientinterface03";
 import Clientinterface04 from "../Clientinterface/Clientinterface04";
 import Footer from "./Footer";
 import Header from "./Header";
-import ClientRequest from "../Clientinterface/Services/ClientGarbageRequest";
 
-function navigate(p0: string) {
+function Navigates() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [unauthorized, setUnauthorized] = useState(false);
@@ -165,4 +164,4 @@ function navigate(p0: string) {
   );
 }
 
-export default navigate;
+export default Navigates;

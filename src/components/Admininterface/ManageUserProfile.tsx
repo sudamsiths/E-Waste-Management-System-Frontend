@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Search, Download, Plus, MoreHorizontal, ArrowUpDown, RefreshCcw, AlertCircle, Trash, Check, X, Edit } from 'lucide-react';
+import { ChevronDown, Search, Download, Plus, ArrowUpDown, RefreshCcw, AlertCircle, Trash, Edit } from 'lucide-react';
 import axios from 'axios';
 
 // Define Role type to match backend

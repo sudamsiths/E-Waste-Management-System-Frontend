@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../common/Header';
-import { RefreshCcw, Package, MapPin, Calendar, Star, Eye, Filter, Search } from 'lucide-react';
+import { RefreshCcw, Package, MapPin, Eye, Filter, Search } from 'lucide-react';
 
 // Define interfaces for garbage request data
 interface GarbageRequest {
@@ -161,11 +161,6 @@ const ClientAllRequest: React.FC = () => {
   const handleRefresh = () => {
     setRefreshTrigger(prev => prev + 1);
   };
-
-  const formatDate = (dateValue: string | Date | undefined) => {
-  if (!dateValue) return 'N/A';
-  // ...rest of function...
-};
 
   const getStatusColor = (status: string) => {
     return statusColors[status as keyof typeof statusColors] || 'bg-gray-100 text-gray-800 border-gray-200';

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 interface FormData {
@@ -213,17 +213,6 @@ const Register: React.FC = () => {
       setIsSubmitting(false);
     }
   };
-
-  const getPasswordStrength = (password: string): number => {
-    let strength = 0;
-    if (password.length >= 8) strength++;
-    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
-    if (/\d/.test(password)) strength++;
-    if (/[@$!%*?&]/.test(password)) strength++;
-    return strength;
-  };
-
-  const passwordStrength = getPasswordStrength(formData.password);
 
   return (
     <div className="min-h-screen relative overflow-hidden font-inter bg-gradient-to-br from-gray-900 via-green-900 to-gray-800">
@@ -586,7 +575,7 @@ const Register: React.FC = () => {
                 <p className="text-yellow-200 text-sm">
                   Already have an account?
                 </p>
-                <a href="/login" className="text-green-400 text-sm font-bold underline mt-1 inline-block min-h-[44px] flex items-center justify-center">
+                <a href="/login" className="text-green-400 text-sm font-bold underline mt-1 flex items-center justify-center min-h-[44px]">
                   Sign In
                 </a>
               </div>
