@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Header from '../../common/Header';
-import axios from 'axios'; // Import axios for API calls
-import { useNavigate } from 'react-router-dom'; // For navigation after submission
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
-// E-Waste category union type matching backend
 export const EWasteCategoryValues = [
   'IT_EQUIPMENT',
   'CONSUMER_ELECTRONICS',
@@ -94,23 +93,9 @@ const ClientRequest: React.FC = () => {
   // Function to fetch existing garbage items
   const fetchExistingGarbageItems = async () => {
     try {
-      // Try multiple potential endpoints
-      let response;
-      
-      try {
-        response = await axios.get('http://localhost:8085/garbage/latest');
-      } catch (err) {
-        console.log('First garbage endpoint failed, trying alternative');
-        try {
-          response = await axios.get('http://localhost:8085/garbage/all');
-        } catch (err2) {
-          console.log('Second garbage endpoint failed, trying last resort');
-          response = await axios.get('http://localhost:8085/garbage');
-        }
-      }
+      const response = await axios.get('http://localhost:8085/garbage/latest');
       
       if (response?.data) {
-        // Handle different response structures
         let items = [];
         
         if (Array.isArray(response.data)) {
@@ -124,11 +109,7 @@ const ClientRequest: React.FC = () => {
           items = [response.data];
         }
         
-        // Filter out items that already have agents assigned if needed
-        // const unassignedItems = items.filter(item => !item.AgentName && !item.agentName);
-        
         setExistingGarbageItems(items);
-        console.log('Fetched existing garbage items:', items);
       }
     } catch (error) {
       console.error('Failed to fetch existing garbage items:', error);
@@ -175,24 +156,11 @@ const ClientRequest: React.FC = () => {
     }
   };
 
-  // Function to fetch available agents
   const fetchAvailableAgents = async () => {
     try {
       setAgentsLoading(true);
       
-      // Try multiple potential endpoints to get agents
-      let response;
-      try {
-        response = await axios.get('http://localhost:8082/agent/GetAll/AgentsName');
-      } catch (err) {
-        console.log('First agent endpoint failed, trying alternative');
-        try {
-          response = await axios.get('http://localhost:8082/agent/all');
-        } catch (err2) {
-          console.log('Second agent endpoint failed, trying last resort');
-          response = await axios.get('http://localhost:8082/agent');
-        }
-      }
+      const response = await axios.get('http://localhost:8082/agent/GetAll/AgentsName');
       
       if (response?.data) {
         let transformedAgents: Array<{agentId: string, fullName: string}> = [];
@@ -219,7 +187,6 @@ const ClientRequest: React.FC = () => {
         }
         
         setAvailableAgents(transformedAgents);
-        console.log('Fetched agents:', transformedAgents);
       }
     } catch (error) {
       console.error('Failed to fetch agents:', error);
@@ -283,8 +250,6 @@ const ClientRequest: React.FC = () => {
       return;
     }
     
-    console.log('Selected agent:', agent);
-    
     setFormData(prev => ({
       ...prev,
       assignedAgentId: agent.agentId,
@@ -303,10 +268,7 @@ const ClientRequest: React.FC = () => {
         AgentName: agent.fullName
       };
       
-      console.log(`Updating garbage ID ${garbageId} with agent ${agent.fullName}`, updatePayload);
-      
-      // Make PUT request to the assignAgent endpoint
-      const response = await axios.put(
+      await axios.put(
         `http://localhost:8085/garbage/assignAgent/${garbageId}`,
         updatePayload,
         {
@@ -317,7 +279,6 @@ const ClientRequest: React.FC = () => {
         }
       );
       
-      console.log('Agent assignment update successful:', response.data);
       return true;
     } catch (error) {
       console.error('Failed to update garbage with agent assignment:', error);
@@ -420,17 +381,14 @@ const ClientRequest: React.FC = () => {
         submitFormData.append('assignedAgent', formData.assignedAgentName);
       }
       
-      // Add submission date in multiple formats to ensure backend compatibility
       const currentDate = new Date();
       const submissionDate = currentDate.toISOString();
-      const submissionDateLocal = currentDate.toLocaleString();
       
-      // Try multiple field names that backend might expect
       submitFormData.append('submissionDate', submissionDate);
-      submitFormData.append('SubmissionDate', submissionDate); // Capital S
-      submitFormData.append('submission_date', submissionDate); // Snake case
-      submitFormData.append('dateSubmitted', submissionDate); // Alternative naming
-      submitFormData.append('createdAt', submissionDate); // Common field name
+      submitFormData.append('SubmissionDate', submissionDate);
+      submitFormData.append('submission_date', submissionDate);
+      submitFormData.append('dateSubmitted', submissionDate);
+      submitFormData.append('createdAt', submissionDate);
       
       // Add user identification from localStorage
       const userId = localStorage.getItem('userId');
@@ -440,10 +398,8 @@ const ClientRequest: React.FC = () => {
         submitFormData.append('userId', userId);
       }
       
-      // Add userName to identify who sent the request
       if (userName) {
         submitFormData.append('userName', userName);
-        console.log('Adding userName to request:', userName);
       } else {
         setSubmitError('User not found. Please log in again.');
         setIsSubmitting(false);
@@ -455,19 +411,7 @@ const ClientRequest: React.FC = () => {
         submitFormData.append('image', formData.itemImage);
       }
       
-      // Log the form data being sent (for debugging)
-      console.log('Submitting garbage request with the following data:');
-      console.log('- Title:', formData.itemTitle);
-      console.log('- Location:', formData.pickupLocation);
-      console.log('- Category:', formData.category);
-      console.log('- Weight:', formData.estimatedWeight);
-      console.log('- Points:', rewardPoints);
-      console.log('- UserName:', userName);
-      console.log('- UserId:', userId);
-      console.log('- SubmissionDate (ISO):', submissionDate);
-      console.log('- SubmissionDate (Local):', submissionDateLocal);
       
-      // Log agent assignment information if available
       if (formData.assignedAgentId && formData.assignedAgentName) {
         console.log('- Assigned Agent ID:', formData.assignedAgentId);
         console.log('- Assigned Agent Name:', formData.assignedAgentName);

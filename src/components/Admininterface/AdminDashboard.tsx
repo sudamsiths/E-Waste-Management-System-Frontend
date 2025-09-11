@@ -263,9 +263,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
         throw new Error(`Error: ${response.status} - ${response.statusText}`);
       }
       
-      // Parse response
       const data = await response.json();
-      console.log("Latest garbage items:", data);
       
       // Format data for display - ensure we get an array even if structure varies
       const itemsArray = Array.isArray(data) ? data : 
@@ -553,9 +551,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
       // Try each endpoint until one works
       for (const endpoint of endpoints) {
         try {
-          console.log(`Trying status update endpoint: ${baseUrl}${endpoint}`);
-          
-          // Send the request to the endpoint
           const response = await fetch(`${baseUrl}${endpoint}`, {
             method: 'PUT',
             headers: {
@@ -566,15 +561,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
           
           if (response.ok) {
             endpointSuccess = true;
-            console.log(`Successfully updated status using endpoint: ${baseUrl}${endpoint}`);
             break;
           } else {
             responseError = `Error: ${response.status} - ${response.statusText}`;
-            console.warn(`Status update endpoint ${baseUrl}${endpoint} failed: ${responseError}`);
           }
         } catch (err) {
           responseError = err instanceof Error ? err.message : 'Unknown error';
-          console.error(`Error trying status update endpoint ${baseUrl}${endpoint}:`, err);
         }
       }
       
@@ -582,7 +574,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
         throw new Error(responseError);
       }
       
-      // Update the local state to reflect the new status
       setPickupRequests(prevRequests => 
         prevRequests.map(request => 
           request.id === id ? 
@@ -595,8 +586,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
           request
         )
       );
-      
-      console.log(`Status for item ${id} updated to ${newStatus} successfully`);
       
     } catch (err) {
       console.error(`Failed to update status for item ${id}:`, err);
@@ -615,9 +604,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
     setAgentsError(null);
     
     try {
-      console.log('Fetching agents from API...');
-      
-      // Primary API call to get all agents with names
       const response = await fetch('http://localhost:8082/agent/GetAll/AgentsName', {
         method: 'GET',
         headers: {
@@ -631,7 +617,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
       }
       
       const agentData = await response.json();
-      console.log('Raw agent data from API:', agentData);
       
       // Handle the response from AgentsName endpoint
       let transformedAgents: Agent[] = [];
@@ -719,19 +704,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
           };
         }).filter((agent: any) => agent !== null); // Remove any null entries
       } else {
-        console.warn('Unexpected agent data structure:', agentData);
         transformedAgents = [];
       }
       
-      console.log('Transformed agents:', transformedAgents);
-      
       if (transformedAgents.length === 0) {
-        console.warn('No agents found in API response');
         setAgentsError('No agents found. The API returned empty data.');
         setAgents([]);
       } else {
         setAgents(transformedAgents);
-        console.log(`Successfully loaded ${transformedAgents.length} agents`);
       }
       
     } catch (err) {
@@ -749,76 +729,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
   // New function to ensure agent exists in the backend database
   const ensureAgentInBackend = async (agent: Agent): Promise<boolean> => {
     try {
-      console.log(`Ensuring agent ${agent.fullName} exists in backend database...`);
-      
-      // Format the payload according to backend expectations
       const payload = {
         fullName: agent.fullName,
-        email: agent.email || `${agent.fullName.replace(/\s+/g, '.').toLowerCase()}@example.com`, // Generate email if missing
-        contactNo: agent.contactNumber || "0000000000", // Default contact if missing
+        email: agent.email || `${agent.fullName.replace(/\s+/g, '.').toLowerCase()}@example.com`,
+        contactNo: agent.contactNumber || "0000000000",
         assignBranch: agent.assignBranch || "Main Branch",
         status: agent.status === 'Active' ? 'ACTIVE' : 
                agent.status === 'Inactive' ? 'INACTIVE' : 'ACTIVE'
       };
       
-      console.log('Sending agent data to backend:', payload);
+      const response = await fetch('http://localhost:8082/agent/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
       
-      // Try multiple endpoints to ensure agent is registered
-      let agentRegistered = false;
-      
-      try {
-        // First try the agent-specific endpoint
-        console.log('Attempting to register agent at http://localhost:8082/agent/add');
-        const response = await fetch('http://localhost:8082/agent/add', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        });
-        
-        if (response.ok) {
-          console.log('Agent successfully added to backend database via agent API');
-          agentRegistered = true;
-        } else if (response.status === 409) {
-          console.log('Agent already exists in backend database');
-          return true;
-        }
-      } catch (err) {
-        console.warn('Failed to register agent at agent endpoint, will try garbage endpoint', err);
-      }
-      
-      // If agent registration failed at the first endpoint, try the garbage endpoint
-      if (!agentRegistered) {
-        try {
-          // Try the garbage endpoint to register the agent
-          // Create a FormData object to match the format used in ClientGarbageRequest.tsx
-          const formData = new FormData();
-          formData.append('agentId', agent.agentId?.toString() || '0');
-          formData.append('agentName', agent.fullName);
-          formData.append('fullName', agent.fullName);
-          formData.append('email', payload.email);
-          formData.append('contactNo', payload.contactNo);
-          formData.append('assignBranch', payload.assignBranch);
-          formData.append('status', payload.status);
-          
-          console.log('Attempting to register agent via http://localhost:8085/garbage/add');
-          const garbageResponse = await fetch('http://localhost:8085/garbage/add', {
-            method: 'POST',
-            body: formData
-          });
-          
-          if (garbageResponse.ok) {
-            console.log('Agent successfully added via garbage endpoint');
-            agentRegistered = true;
-          }
-        } catch (garbageErr) {
-          console.warn('Failed to register agent at garbage endpoint', garbageErr);
-        }
-      }
-      
-      return agentRegistered;
+      return response.ok || response.status === 409;
     } catch (err) {
       console.error('Error adding agent to backend:', err);
       return false;
@@ -842,16 +771,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
 
       console.log(`Attempting to assign agent ${selectedAgent.fullName} (ID: ${selectedAgent.agentId}) to garbage request ${requestId}`);
       
-      // First, ensure this agent exists in the backend database
       await ensureAgentInBackend(selectedAgent);
 
-      // Use the specific assignAgent endpoint
       const baseUrl = 'http://localhost:8085';
       const endpointPath = `/garbage/assignAgent/${requestId}`;
       
       console.log(`Assigning agent using endpoint: ${baseUrl}${endpointPath}`);
       
-      // Prepare the payload with AgentName only
       const requestBody = JSON.stringify({
         AgentName: selectedAgent.fullName
       });
@@ -872,7 +798,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
       
       console.log(`Successfully assigned agent ${selectedAgent.fullName} to request ${requestId}`);
       
-      // Update the local state to reflect the assigned agent
       setPickupRequests(prevRequests => 
         prevRequests.map(request => 
           request.id === requestId ? 
@@ -886,17 +811,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ initialTab = 'dashboard
       
       console.log(`Agent ${selectedAgent.fullName} assigned to request ${requestId} in UI`);
       
-      // Set success state
       setAgentAssignSuccess(prev => ({...prev, [requestId]: true}));
       
-      // Try to refresh pickup requests to get the latest data from the server
       try {
         await fetchPickupRequests();
       } catch (refreshErr) {
         console.warn('Could not refresh pickup requests after agent assignment:', refreshErr);
       }
       
-      // Clear success message after 3 seconds
       setTimeout(() => {
         setAgentAssignSuccess(prev => ({...prev, [requestId]: false}));
       }, 3000);
