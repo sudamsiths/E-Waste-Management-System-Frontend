@@ -298,7 +298,7 @@ function ClientAccountSetting() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading user profile...</p>
         </div>
       </div>
@@ -314,7 +314,7 @@ function ClientAccountSetting() {
           <div className="p-4 md:p-6">
             {/* Logo Section */}
             <div className="flex items-center gap-3 mb-6 p-4 rounded-xl bg-green-50 border border-green-100">
-              <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center">
                 <span className="text-white font-bold text-sm">E</span>
               </div>
               <div>
@@ -327,7 +327,7 @@ function ClientAccountSetting() {
             <div className="mb-6 p-4 border border-gray-100 rounded-xl bg-gray-50">
               <div className="flex items-center gap-3">
                 <div 
-                  className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white text-sm font-bold cursor-pointer"
+                  className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-white text-sm font-bold cursor-pointer"
                   onClick={handleProfileClick}
                 >
                   {getInitials(formData.fullName || 'User')}
@@ -351,7 +351,7 @@ function ClientAccountSetting() {
                     onClick={() => setActiveNavItem(item.name)}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                       isActive 
-                        ? 'bg-green-50 text-green-700 border-l-4 border-green-500 shadow-sm' 
+                        ? 'bg-green-50 text-green-700 border-l-4 border-green-600 shadow-sm' 
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     }`}
                   >
@@ -419,8 +419,8 @@ function ClientAccountSetting() {
             {message.text && (
               <div className={`mb-6 p-4 rounded-lg border ${
                 message.type === 'success' 
-                  ? 'bg-green-50 border-green-200 text-green-800' 
-                  : 'bg-red-50 border-red-200 text-red-800'
+                  ? 'bg-green-50 border-green-200 text-green-600' 
+                  : 'bg-red-50 border-red-200 text-red-600'
               }`}>
                 {message.text}
               </div>
@@ -474,7 +474,7 @@ function ClientAccountSetting() {
                         value={formData.fullName}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent transition-colors"
                         placeholder="Enter your full name"
                       />
                     </div>
@@ -488,7 +488,7 @@ function ClientAccountSetting() {
                        value={formData.contactNo}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent transition-colors"
                         placeholder="Enter your contact number"
                       />
                     </div>
@@ -520,7 +520,7 @@ function ClientAccountSetting() {
                         value={formData.email}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent transition-colors"
                         placeholder="Enter your email address"
                       />
                     </div>
@@ -537,7 +537,7 @@ function ClientAccountSetting() {
                       onChange={handleInputChange}
                       required
                       rows={3}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none transition-colors"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent resize-none transition-colors"
                       placeholder="Enter your full address"
                     />
                   </div>
@@ -560,7 +560,7 @@ function ClientAccountSetting() {
                             name="password"
                             value={formData.password}
                             onChange={handleInputChange}
-                            className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
+                            className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent transition-colors"
                             placeholder="Enter new password"
                           />
                           <button
@@ -583,7 +583,7 @@ function ClientAccountSetting() {
                             name="confirmPassword"
                             value={formData.confirmPassword}
                             onChange={handleInputChange}
-                            className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
+                            className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent transition-colors"
                             placeholder="Confirm new password"
                           />
                           <button

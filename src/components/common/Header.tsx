@@ -19,8 +19,12 @@ const EcoTechNavbar = () => {
       setActiveItem('Home');
     } else if (location.pathname === '/services') {
       setActiveItem('Services');
+    } else if (location.pathname === '/branches') {
+      setActiveItem('Branches');
     } else if (location.pathname === '/ClientRequest') {
       setActiveItem('');  // No navigation item is active when on request page
+    } else if (location.pathname === '/about') {
+      setActiveItem('About');
     }
   }, [location.pathname]);
 
@@ -74,8 +78,16 @@ const EcoTechNavbar = () => {
         navigate('/services');
         setIsMobileMenuOpen(false);
         return;
+      case 'Branches':
+        navigate('/branches');
+        setIsMobileMenuOpen(false);
+        return;
       case 'Contact':
         navigate('/contact');
+        setIsMobileMenuOpen(false);
+        return;
+      case 'About':
+        navigate('/about');
         setIsMobileMenuOpen(false);
         return;
       default:
@@ -87,15 +99,19 @@ const EcoTechNavbar = () => {
           }
           // For anchor links on the same page, just close the mobile menu
           setIsMobileMenuOpen(false);
+        } else if (href) {
+          // Navigate to the specified href if it exists
+          navigate(href);
+          setIsMobileMenuOpen(false);
         }
     }
   };
 
   const navigationItems = [
     { name: 'Home', href: '/Navigate' },
-    { name: 'Branches', href: '#branches' },
+    { name: 'Branches', href: '/branches' },
     { name: 'Services', href: '/services' },
-    { name: 'About', href: '#about' },
+    { name: 'About', href: '/about' },
     { name: 'Contact', href: '/contact' },
     { name: 'Shop', href: '#shop' },
   ];
@@ -119,8 +135,8 @@ const EcoTechNavbar = () => {
               style={{cursor:'pointer'}} 
               className="flex items-center focus:outline-none"
             >
-              <span className="text-xl sm:text-2xl font-bold text-green-500">Eco</span>
-              <span className="text-xl sm:text-2xl font-bold text-red-500">Tech</span>
+              <span className="text-xl sm:text-2xl font-bold text-green-600">Eco</span>
+              <span className="text-xl sm:text-2xl font-bold text-red-600">Tech</span>
             </button>
           </div>
 
@@ -138,7 +154,7 @@ const EcoTechNavbar = () => {
               >
                 {item.name}
                 {activeItem === item.name && (
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-green-500 rounded-full"></div>
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-green-600 rounded-full"></div>
                 )}
               </button>
             ))}
@@ -157,7 +173,7 @@ const EcoTechNavbar = () => {
             {/* Request Pickup Button (Responsive) */}
             <button
               onClick={() => navigate('/ClientRequest')}
-              className="bg-green-500 hover:bg-green-600 text-white px-2 sm:px-4 py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 transition-colors duration-200 text-xs sm:text-sm font-medium touch-manipulation"
+              className="bg-green-600 hover:bg-green-700 text-white px-2 sm:px-4 py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 transition-colors duration-200 text-xs sm:text-sm font-medium touch-manipulation"
               style={{cursor:'pointer'}}
             >
               <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

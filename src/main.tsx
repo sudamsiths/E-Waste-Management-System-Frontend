@@ -18,6 +18,8 @@ import ManageUserProfile from "./components/Admininterface/ManageUserProfile.tsx
 import AddAgent from "./components/Admininterface/AddAgent.tsx";
 import CustomerAccountSettings from "./components/Clientinterface/CustomerAccountSettings.tsx";
 import ClientAllRequest from './components/Clientinterface/Services/ClientAllRequest';
+import BranchesMap from './components/Clientinterface/Services/BranchesMap';
+import About from "./components/Clientinterface/about.tsx";
 
 
 const root = document.getElementById("root") || document.createElement("div");
@@ -43,6 +45,9 @@ ReactDOM.createRoot(root).render(
       <Route path="/add-agent" element={<AddAgent />} />
       <Route path="/customer-account-settings" element={<CustomerAccountSettings />} />
       <Route path="/client/all-requests" element={<ClientAllRequest />} />
+      <Route path="/branches" element={<BranchesMap />} />
+      <Route path="/about" element={<About />} />
+      
     </Routes>
   </BrowserRouter>
 );

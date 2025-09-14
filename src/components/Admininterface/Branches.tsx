@@ -511,19 +511,19 @@ const Branches: React.FC = () => {
         </div>
       </div>
       
-      {/* Add Form - conditionally rendered */}
+      {/* Add Form - Updated colors to match brand */}
       {showAddForm && (
         <div className="p-4 lg:p-6 bg-gray-50 border-b border-gray-200">
           <h3 className="text-md font-semibold text-gray-800 mb-4">Add New Recycling Center Branch</h3>
           
           {submitSuccess && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-md">
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-600 rounded-md">
               Recycling center branch added successfully!
             </div>
           )}
           
           {submitError && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md">
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-md">
               {submitError}
             </div>
           )}
@@ -538,11 +538,11 @@ const Branches: React.FC = () => {
                   name="centerName"
                   value={newCenter.centerName}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border ${formErrors.centerName ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-green-500`}
+                  className={`w-full px-3 py-2 border ${formErrors.centerName ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-green-600`}
                   placeholder="Enter center name"
                 />
                 {formErrors.centerName && (
-                  <p className="mt-1 text-sm text-red-500">{formErrors.centerName}</p>
+                  <p className="mt-1 text-sm text-red-600">{formErrors.centerName}</p>
                 )}
               </div>
               
@@ -553,11 +553,11 @@ const Branches: React.FC = () => {
                   name="location"
                   value={newCenter.location}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border ${formErrors.location ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-green-500`}
+                  className={`w-full px-3 py-2 border ${formErrors.location ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-green-600`}
                   placeholder="Enter location"
                 />
                 {formErrors.location && (
-                  <p className="mt-1 text-sm text-red-500">{formErrors.location}</p>
+                  <p className="mt-1 text-sm text-red-600">{formErrors.location}</p>
                 )}
               </div>
               
@@ -568,11 +568,11 @@ const Branches: React.FC = () => {
                   name="contactPerson"
                   value={newCenter.contactPerson}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border ${formErrors.contactPerson ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-green-500`}
+                  className={`w-full px-3 py-2 border ${formErrors.contactPerson ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-green-600`}
                   placeholder="Enter contact person name"
                 />
                 {formErrors.contactPerson && (
-                  <p className="mt-1 text-sm text-red-500">{formErrors.contactPerson}</p>
+                  <p className="mt-1 text-sm text-red-600">{formErrors.contactPerson}</p>
                 )}
               </div>
               
@@ -583,11 +583,11 @@ const Branches: React.FC = () => {
                   name="contactNo"
                   value={newCenter.contactNo}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border ${formErrors.contactNo ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-green-500`}
+                  className={`w-full px-3 py-2 border ${formErrors.contactNo ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-green-600`}
                   placeholder="Enter contact number"
                 />
                 {formErrors.contactNo && (
-                  <p className="mt-1 text-sm text-red-500">{formErrors.contactNo}</p>
+                  <p className="mt-1 text-sm text-red-600">{formErrors.contactNo}</p>
                 )}
               </div>
               
@@ -598,11 +598,11 @@ const Branches: React.FC = () => {
                   name="email"
                   value={newCenter.email}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border ${formErrors.email ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-green-500`}
+                  className={`w-full px-3 py-2 border ${formErrors.email ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-green-600`}
                   placeholder="Enter email address"
                 />
                 {formErrors.email && (
-                  <p className="mt-1 text-sm text-red-500">{formErrors.email}</p>
+                  <p className="mt-1 text-sm text-red-600">{formErrors.email}</p>
                 )}
               </div>
             </div>
@@ -640,23 +640,24 @@ const Branches: React.FC = () => {
         </div>
       )}
 
-      {/* Edit Form - conditionally rendered */}
+      {/* Edit Form - updated colors to match brand */}
       {showEditForm && editingCenter && (
         <div className="p-4 lg:p-6 bg-blue-50 border-b border-blue-200">
           <h3 className="text-md font-semibold text-gray-800 mb-4">Edit Recycling Center Branch</h3>
           
           {updateSuccess && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-md">
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-600 rounded-md">
               Recycling center branch updated successfully!
             </div>
           )}
           
           {updateError && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md">
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-md">
               {updateError}
             </div>
           )}
           
+          {/* Edit form with updated focus colors */}
           <form onSubmit={handleUpdate} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -666,11 +667,11 @@ const Branches: React.FC = () => {
                   name="centerName"
                   value={editFormData.centerName}
                   onChange={handleEditInputChange}
-                  className={`w-full px-3 py-2 border ${editFormErrors.centerName ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  className={`w-full px-3 py-2 border ${editFormErrors.centerName ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600`}
                   placeholder="Enter center name"
                 />
                 {editFormErrors.centerName && (
-                  <p className="mt-1 text-sm text-red-500">{editFormErrors.centerName}</p>
+                  <p className="mt-1 text-sm text-red-600">{editFormErrors.centerName}</p>
                 )}
               </div>
               
@@ -681,11 +682,11 @@ const Branches: React.FC = () => {
                   name="location"
                   value={editFormData.location}
                   onChange={handleEditInputChange}
-                  className={`w-full px-3 py-2 border ${editFormErrors.location ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  className={`w-full px-3 py-2 border ${editFormErrors.location ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600`}
                   placeholder="Enter location"
                 />
                 {editFormErrors.location && (
-                  <p className="mt-1 text-sm text-red-500">{editFormErrors.location}</p>
+                  <p className="mt-1 text-sm text-red-600">{editFormErrors.location}</p>
                 )}
               </div>
               
@@ -696,11 +697,11 @@ const Branches: React.FC = () => {
                   name="contactPerson"
                   value={editFormData.contactPerson}
                   onChange={handleEditInputChange}
-                  className={`w-full px-3 py-2 border ${editFormErrors.contactPerson ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  className={`w-full px-3 py-2 border ${editFormErrors.contactPerson ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600`}
                   placeholder="Enter contact person name"
                 />
                 {editFormErrors.contactPerson && (
-                  <p className="mt-1 text-sm text-red-500">{editFormErrors.contactPerson}</p>
+                  <p className="mt-1 text-sm text-red-600">{editFormErrors.contactPerson}</p>
                 )}
               </div>
               
@@ -711,11 +712,11 @@ const Branches: React.FC = () => {
                   name="contactNo"
                   value={editFormData.contactNo}
                   onChange={handleEditInputChange}
-                  className={`w-full px-3 py-2 border ${editFormErrors.contactNo ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  className={`w-full px-3 py-2 border ${editFormErrors.contactNo ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600`}
                   placeholder="Enter contact number"
                 />
                 {editFormErrors.contactNo && (
-                  <p className="mt-1 text-sm text-red-500">{editFormErrors.contactNo}</p>
+                  <p className="mt-1 text-sm text-red-600">{editFormErrors.contactNo}</p>
                 )}
               </div>
               
@@ -726,11 +727,11 @@ const Branches: React.FC = () => {
                   name="email"
                   value={editFormData.email}
                   onChange={handleEditInputChange}
-                  className={`w-full px-3 py-2 border ${editFormErrors.email ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  className={`w-full px-3 py-2 border ${editFormErrors.email ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600`}
                   placeholder="Enter email address"
                 />
                 {editFormErrors.email && (
-                  <p className="mt-1 text-sm text-red-500">{editFormErrors.email}</p>
+                  <p className="mt-1 text-sm text-red-600">{editFormErrors.email}</p>
                 )}
               </div>
             </div>
@@ -746,7 +747,7 @@ const Branches: React.FC = () => {
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
                 disabled={isUpdating}
               >
                 {isUpdating ? (
@@ -772,14 +773,14 @@ const Branches: React.FC = () => {
       {/* Loading State */}
       {isLoading && (
         <div className="flex justify-center items-center p-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
         </div>
       )}
       
       {/* Error State */}
       {error && !isLoading && (
         <div className="p-6">
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md">
             <p className="font-medium">Error Loading Recycling Centers</p>
             <p className="text-sm">{error}</p>
             <button 
@@ -911,13 +912,13 @@ const Branches: React.FC = () => {
             </div>
             
             {deleteError && (
-              <div className="mb-5 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md">
+              <div className="mb-5 p-3 bg-red-50 border border-red-200 text-red-600 rounded-md">
                 <p className="text-sm">{deleteError}</p>
               </div>
             )}
             
             {deleteSuccess && (
-              <div className="mb-5 p-3 bg-green-50 border border-green-200 text-green-700 rounded-md">
+              <div className="mb-5 p-3 bg-green-50 border border-green-200 text-green-600 rounded-md">
                 <p className="text-sm">Recycling center deleted successfully!</p>
               </div>
             )}
