@@ -203,7 +203,7 @@ const About: React.FC = () => {
             e-waste management partner, we're here to help. Together, we can make a positive impact on our environment.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="px-6 py-3 bg-white text-green-600 font-medium rounded-lg hover:bg-gray-100 transition-colors">
+            <button onClick={() => navigate("/ClientRequest")} style={{cursor: 'pointer'}} className="px-6 py-3 bg-white text-green-600 font-medium rounded-lg hover:bg-gray-100 transition-colors">
               Schedule a Pickup
             </button>
             <button className="px-6 py-3 border border-white text-white font-medium rounded-lg hover:bg-green-700 transition-colors">
