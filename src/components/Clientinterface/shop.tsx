@@ -14,6 +14,7 @@ interface Product {
   inStock: boolean;
   isNew?: boolean;
   isEcoFriendly?: boolean;
+  location?: string;
 }
 
 const Shop: React.FC = () => {
@@ -34,110 +35,44 @@ const Shop: React.FC = () => {
   const [sortBy, setSortBy] = useState('featured');
   const [showCart, setShowCart] = useState(false);
 
-  // Fetch products from a mock API or use sample data
+  // Fetch products from API endpoint
   useEffect(() => {
-    // Simulate API call with timeout
-    setIsLoading(true);
-    setTimeout(() => {
-      // Sample product data
-      const sampleProducts: Product[] = [
-        {
-          id: 1,
-          name: "Refurbished Laptop",
-          category: "Electronics",
-          price: 499.99,
-          description: "Fully refurbished laptop, environmentally certified with 1-year warranty",
-          image: "https://images.unsplash.com/photo-1531297484001-80022131f5a1?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1000&q=80",
-          rating: 4.5,
-          inStock: true,
-          isEcoFriendly: true
-        },
-        {
-          id: 2,
-          name: "Recycled Plastic Phone Case",
-          category: "Accessories",
-          price: 24.99,
-          discountPrice: 19.99,
-          description: "Phone case made from 100% recycled ocean plastic",
-          image: "https://images.unsplash.com/photo-1574944985070-8f3ebc6b79d2?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1000&q=80",
-          rating: 4.8,
-          inStock: true,
-          isNew: true,
-          isEcoFriendly: true
-        },
-        {
-          id: 3,
-          name: "Solar Power Bank",
-          category: "Electronics",
-          price: 59.99,
-          description: "10000mAh power bank with integrated solar panel",
-          image: "https://images.unsplash.com/photo-1593117579800-806d62306514?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1000&q=80",
-          rating: 4.2,
-          inStock: true,
-          isEcoFriendly: true
-        },
-        {
-          id: 4,
-          name: "E-Waste Collection Kit",
-          category: "Services",
-          price: 15.00,
-          description: "Kit for safely packaging and shipping your e-waste for recycling",
-          image: "https://images.unsplash.com/photo-1603302576837-37561b2e2302?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1000&q=80",
+    const fetchGarbageItems = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch('http://localhost:8085/garbage/getAll');
+        
+        if (!response.ok) {
+          throw new Error(`API call failed with status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Map the API response to match our Product interface
+        const mappedProducts: Product[] = data.map((item: any, index: number) => ({
+          id: item.id || index + 1,
+          name: item.title || "Unknown Item",
+          category: item.category || "Other",
+          price: item.weight ? item.weight * 5 : 10.00, // Using weight to determine price
+          description: item.description || "No description available",
+          image: item.image ? `http://localhost:8085/uploads/${item.image}` : "https://images.unsplash.com/photo-1603302576837-37561b2e2302?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
           rating: 4.0,
           inStock: true,
-          isEcoFriendly: true
-        },
-        {
-          id: 5,
-          name: "Wireless Headphones",
-          category: "Electronics",
-          price: 129.99,
-          discountPrice: 99.99,
-          description: "Wireless headphones made with recycled materials",
-          image: "https://images.unsplash.com/photo-1546435770-a3e426bf472b?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1000&q=80",
-          rating: 4.7,
-          inStock: false,
-          isEcoFriendly: true
-        },
-        {
-          id: 6,
-          name: "Eco-Friendly Phone Charger",
-          category: "Electronics",
-          price: 29.99,
-          description: "Fast-charging phone charger made from sustainable materials",
-          image: "https://images.unsplash.com/photo-1583863622394-4fa647774484?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1000&q=80",
-          rating: 4.3,
-          inStock: true,
-          isNew: true,
-          isEcoFriendly: true
-        },
-        {
-          id: 7,
-          name: "Recycling Service Subscription",
-          category: "Services",
-          price: 9.99,
-          description: "Monthly subscription for regular e-waste pickup",
-          image: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1000&q=80",
-          rating: 4.9,
-          inStock: true,
-          isEcoFriendly: true
-        },
-        {
-          id: 8,
-          name: "Recycled Aluminum Water Bottle",
-          category: "Accessories",
-          price: 19.99,
-          description: "Water bottle made from 100% recycled aluminum",
-          image: "https://images.unsplash.com/photo-1602143407151-7111542de6e8?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1000&q=80",
-          rating: 4.4,
-          inStock: true,
-          isEcoFriendly: true
-        }
-      ];
-      setProducts(sampleProducts);
-      setFilteredProducts(sampleProducts);
-      setIsLoading(false);
-    }, 1000);
+          isEcoFriendly: true,
+          location: item.location || "Unknown"
+        }));
+        
+        setProducts(mappedProducts);
+        setFilteredProducts(mappedProducts);
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error fetching garbage data:', error);
+        setError('Failed to load products. Please try again later.');
+        setIsLoading(false);
+      }
+    };
+
+    fetchGarbageItems();
   }, []);
 
   // Apply filters and search
@@ -611,6 +546,15 @@ const Shop: React.FC = () => {
                             </svg>
                           </div>
                         </div>
+                        {product.location && (
+                          <div className="flex items-center mt-1 mb-2">
+                            <svg className="w-4 h-4 text-gray-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span className="text-xs text-gray-600">{product.location}</span>
+                          </div>
+                        )}
                         <p className="text-sm text-gray-600 line-clamp-2 h-10 mb-3">{product.description}</p>
                         <div className="flex justify-between items-center">
                           <div>
