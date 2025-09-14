@@ -1,7 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from '../common/Header';
-
 const About: React.FC = () => {
+  const navigate = useNavigate();
+  
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -19,10 +21,10 @@ const About: React.FC = () => {
                 Our mission is to reduce electronic waste and promote recycling through innovative solutions.
               </p>
               <div className="flex gap-3">
-                <button className="px-6 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors">
+                <button style={{cursor: 'pointer'}} className="px-6 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors">
                   Our Services
                 </button>
-                <button className="px-6 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">
+                <button onClick={() => navigate("/contact")} style={{cursor: 'pointer'}} className="px-6 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">
                   Contact Us
                 </button>
               </div>

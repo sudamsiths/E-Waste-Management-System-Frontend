@@ -387,8 +387,8 @@ function UserInterface() {
                       is a step towards protecting our environment and conserving valuable resources.
                     </p>
                     <div className="flex flex-wrap gap-4 animate-fade-in-left animation-delay-600">
-                      <Link to="/ClientRequest" className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors duration-300 flex items-center gap-2">
-                        <span style={{cursor: 'pointer'}}>Schedule Pickup</span>
+                      <Link to="/ClientRequest" className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors duration-300 flex items-center gap-2" style={{cursor: 'pointer'}}>
+                        <span>Schedule Pickup</span>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
                         </svg>
