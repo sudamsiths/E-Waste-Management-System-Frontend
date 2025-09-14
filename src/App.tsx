@@ -1,5 +1,4 @@
 import { Outlet, Route, Routes } from 'react-router'
-import About from './components/Clientinterface/about';
 
 function App() {
   return (
