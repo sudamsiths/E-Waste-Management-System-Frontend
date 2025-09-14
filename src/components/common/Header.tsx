@@ -90,6 +90,10 @@ const EcoTechNavbar = () => {
         navigate('/about');
         setIsMobileMenuOpen(false);
         return;
+      case 'Shop':
+        navigate("/shop")
+        setIsMobileMenuOpen(false)
+        return;
       default:
         // Handle other navigation items with anchor links
         if (href.startsWith('#')) {
@@ -113,7 +117,7 @@ const EcoTechNavbar = () => {
     { name: 'Services', href: '/services' },
     { name: 'About', href: '/about' },
     { name: 'Contact', href: '/contact' },
-    { name: 'Shop', href: '#shop' },
+    { name: 'Shop', href: '/shop' },
   ];
 
   return (

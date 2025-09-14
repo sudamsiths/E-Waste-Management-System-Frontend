@@ -20,6 +20,7 @@ import CustomerAccountSettings from "./components/Clientinterface/CustomerAccoun
 import ClientAllRequest from './components/Clientinterface/Services/ClientAllRequest';
 import BranchesMap from './components/Clientinterface/Services/BranchesMap';
 import About from "./components/Clientinterface/about.tsx";
+import Shop from "./components/Clientinterface/shop.tsx";
 
 
 const root = document.getElementById("root") || document.createElement("div");
@@ -47,6 +48,7 @@ ReactDOM.createRoot(root).render(
       <Route path="/client/all-requests" element={<ClientAllRequest />} />
       <Route path="/branches" element={<BranchesMap />} />
       <Route path="/about" element={<About />} />
+      <Route path="/shop" element={<Shop />} />
       
     </Routes>
   </BrowserRouter>
